@@ -1,0 +1,22 @@
+- hosts: all
+  strategy: free
+  gather_facts: yes
+  become: "{{ ANSIBLE_BECOME }}"
+  tasks:
+    - name: "Download {{ URL }} at {{ DEST }}"
+      get_url:
+        checksum: "{{ CHECKSUM | default(omit, true) }}"
+        client_cert: "{{ CLIENT_CERT | default(omit, true) }}"
+        client_key: "{{ CLIENT_KEY | default(omit, true) }}"
+        dest: "{{ DEST }}"
+        force: "{{ FORCE }}"
+        group: "{{ GROUP | default(omit, true) }}"
+        mode: "{{ MODE | default(omit, true) }}"
+        owner: "{{ OWNER | default(omit, true) }}"
+        timeout: "{{ TIMEOUT }}"
+        url: "{{ URL }}"
+        url_username: "{{ URL_USERNAME | default(omit, true) }}"
+        url_password: "{{ URL_PASSWORD | default(omit, true) }}"
+        validate_certs: "{{ VALIDATE_CERTS }}"
+    - include_tasks: "{{ configure }}"
+      when: (configure is defined) and (configure|length > 0)

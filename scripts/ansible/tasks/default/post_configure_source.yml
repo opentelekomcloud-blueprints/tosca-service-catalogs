@@ -1,0 +1,4 @@
+- debug:
+    msg:
+      - "Hello I am a default ansible task {{ SOURCE_NODE }} executing on {{ SOURCE_HOST }} to connect with {{ TARGET_NODE }} at {{ TARGET_IP }}."
+      - "You can upload a .yml file in the post_configure_source artifact of {{ SOURCE_NODE }} to replace me."

@@ -1,0 +1,123 @@
+# Copyright (C) 2020 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.paas.scripts
+  template_version: 1.0.1
+  template_author: Tri
+
+description: >
+  Scripts component with basic operations (i.e., create, configure, start, stop, delete)
+  for users to specify and execute on a target node.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.paas.scripts.common:1.0.0
+
+node_types:
+  otc.nodes.SoftwareComponent.Bash:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      A bash script component with basic operations (i.e., create, configure, start, stop, delete)
+      for users to specify and execute on a target node.
+    tags:
+      icon: /images/bash.png
+    properties:
+      component_version:
+        type: version
+        description: Version of the software component
+        default: 1.0
+    attributes:
+      app_url: { concat: [get_property: [SELF, data_endpoint, protocol], "://", get_attribute: [HOST, public_ip_address], ":", get_property: [SELF, data_endpoint, port], "/", get_property: [SELF, data_endpoint, url_path] ] }
+      local_app_url: { concat: [get_property: [SELF, data_endpoint, protocol], "://", get_attribute: [HOST, private_address], ":", get_property: [SELF, data_endpoint, port], "/", get_property: [SELF, data_endpoint, url_path] ] }
+    capabilities:
+      data_endpoint:
+        type: otc.capabilities.Endpoint
+      host_file:
+        type: otc.capabilities.Container.File
+        occurrences: [0, unbounded]
+    requirements:
+      - connect_to_data_endpoint:
+          capability: otc.capabilities.Endpoint
+          relationship: otc.relationships.BashConnectToScriptComponent
+          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            COMPONENT_VERSION: { get_property: [SELF, component_version] }
+            ENV: { get_property: [SELF, data_endpoint, env] }
+            PROTOCOL: { get_property: [SELF, data_endpoint, protocol] }
+            PORT: { get_property: [SELF, data_endpoint, port] }
+            URL_PATH: { get_property: [SELF, data_endpoint, url_path] }
+            PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
+          implementation: scripts/configure.sh
+        stop:
+          inputs:
+            COMPONENT_VERSION: { get_property: [SELF, component_version] }
+            ENV: { get_property: [SELF, data_endpoint, env] }
+            PROTOCOL: { get_property: [SELF, data_endpoint, protocol] }
+            PORT: { get_property: [SELF, data_endpoint, port] }
+            URL_PATH: { get_property: [SELF, data_endpoint, url_path] }
+            PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
+          implementation: scripts/stop.sh
+    artifacts:
+      - configure:
+          type: tosca.artifacts.File
+          description: Specify a bash script to execute when this node is configured.
+          file: examples/configure.sh
+      - post_configure_source:
+          type: tosca.artifacts.File
+          description: Specify a bash script to configure the source node to connect to a target node.
+          file: examples/post_configure_source.sh
+      - add_source:
+          type: tosca.artifacts.File
+          description: Specify a bash script to notify the target node that a source node is now available via a relationship.
+          file: examples/add_source.sh
+      - stop:
+          type: tosca.artifacts.File
+          description: Specify a bash script to execute when this node stops.
+          file: examples/stop.sh
+
+
+relationship_types:
+  otc.relationships.BashConnectToScriptComponent:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        post_configure_source:
+          inputs:
+            SOURCE_COMPONENT_VERSION: { get_property: [SOURCE, component_version] }
+            SOURCE_IP: { get_attribute: [SOURCE, private_address] }
+            SOURCE_ENV: {get_property: [SOURCE, data_endpoint, env]}
+            SOURCE_PORT: { get_property: [SOURCE, data_endpoint, port] }
+            SOURCE_PROTOCOL: {get_property: [SOURCE, data_endpoint, protocol]}
+            SOURCE_URL_PATH: {get_property: [SOURCE, data_endpoint, url_path]}
+            SOURCE_PORT_NAME: {get_property: [SOURCE, data_endpoint, port_name]}
+            TARGET_COMPONENT_VERSION: { get_property: [TARGET, component_version] }
+            TARGET_IP: { get_attribute: [TARGET, private_address] }
+            TARGET_ENV: {get_property: [TARGET, data_endpoint, env]}
+            TARGET_PORT: { get_property: [TARGET, data_endpoint, port] }
+            TARGET_PROTOCOL: {get_property: [TARGET, data_endpoint, protocol]}
+            TARGET_URL_PATH: {get_property: [TARGET, data_endpoint, url_path]}
+            TARGET_PORT_NAME: {get_property: [TARGET, data_endpoint, port_name]}
+          implementation: scripts/post_configure_source.sh
+        add_source:
+          inputs:
+            SOURCE_COMPONENT_VERSION: { get_property: [SOURCE, component_version] }
+            SOURCE_IP: { get_attribute: [SOURCE, private_address] }
+            SOURCE_ENV: {get_property: [SOURCE, data_endpoint, env]}
+            SOURCE_PORT: { get_property: [SOURCE, data_endpoint, port] }
+            SOURCE_PROTOCOL: {get_property: [SOURCE, data_endpoint, protocol]}
+            SOURCE_URL_PATH: {get_property: [SOURCE, data_endpoint, url_path]}
+            SOURCE_PORT_NAME: {get_property: [SOURCE, data_endpoint, port_name]}
+            TARGET_COMPONENT_VERSION: { get_property: [TARGET, component_version] }
+            TARGET_IP: { get_attribute: [TARGET, private_address] }
+            TARGET_ENV: {get_property: [TARGET, data_endpoint, env]}
+            TARGET_PORT: { get_property: [TARGET, data_endpoint, port] }
+            TARGET_PROTOCOL: {get_property: [TARGET, data_endpoint, protocol]}
+            TARGET_URL_PATH: {get_property: [TARGET, data_endpoint, url_path]}
+            TARGET_PORT_NAME: {get_property: [TARGET, data_endpoint, port_name]}
+          implementation: scripts/add_source.sh

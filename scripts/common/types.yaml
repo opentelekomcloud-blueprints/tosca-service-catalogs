@@ -1,0 +1,47 @@
+# Copyright (C) 2020 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.paas.scripts.common
+  template_version: 1.0.0
+  template_author: Tri
+
+description: >
+  Common definition for ansible and scripts components
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+capability_types:
+  otc.capabilities.Endpoint:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      env:
+        type: map
+        description: >
+          Define the environment variables that will be available in this node operation. 
+          For example, add an entry of FOO/bar resulting the environment variable "FOO=bar" 
+          in the bash script and the ansible variable {{ FOO }} in this node operation. 
+          For a relationship operation (e.g., post_configure_source, add_source), the 
+          environment variable is available as "SOURCE_FOO" and "TARGET_FOO" in the source 
+          node and target node, respectively.
+        required: false
+        entry_schema:
+          type: string
+
+  otc.capabilities.Container.File:
+    derived_from: tosca.capabilities.Container
+
+
+artifact_types:
+  otc.artifacts.AnsibleTasksYmlFile:
+    derived_from: tosca.artifacts.Root
+    description: ansible tasks yml file
+    file_ext: [ yml ]
+
+  otc.artifacts.AnsibleVariablesYmlFile:
+    derived_from: tosca.artifacts.Root
+    description: ansible variables yml file
+    file_ext: [ yml ]

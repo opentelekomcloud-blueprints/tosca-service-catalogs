@@ -1,0 +1,127 @@
+# Copyright (C) 2020 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.paas.scripts.ansible.geturl
+  template_version: 1.0.0
+  template_author: Tri
+
+description: >
+  A software component for users to download files from HTTP, HTTPS, or FTP on a script component
+  (e.g., download a .war file on a apache server).
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.paas.scripts.common:1.0.0
+
+node_types:
+  otc.nodes.SoftwareComponent.Ansible.GetUrl:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: The component uses ansible get_url to download the files. The following properties are the same as the get_url builtin.
+    tags:
+      icon: /images/icon.png
+    properties:
+      ansible_become:
+        type: boolean
+        description: Set to true to run the ansible tasks given in the configure artifact with privilege escalation. Defaults to false.
+        default: false
+        required: false
+      url:
+        type: string
+        description: >
+          HTTP, HTTPS, or FTP URL in the form (http|https|ftp)://[user[:pass]]@host.domain[:port]/path
+        required: true
+      dest:
+        type: string
+        description: >
+          Absolute path of where to download the file to. If dest is a directory, either the server provided filename or,
+          if none provided, the base name of the URL on the remote server will be used. If a directory, force has no effect.
+        required: true
+      checksum:
+        type: string
+        description: >
+          If a checksum is passed to this parameter, the digest of the destination file will be calculated after it is 
+          downloaded to ensure its integrity and verify that the transfer completed successfully. Format: <algorithm>:<checksum|url>
+        default: ""
+        required: false
+      client_cert:
+        type: string
+        description: Specify the path to the PEM formatted certificate chain file to be used for SSL client authentication.
+        required: false
+      client_key:
+        type: string
+        description: Specify the path to the PEM formatted file that contains your private key to be used for SSL client authentication.
+        required: false
+      force:
+        type: boolean
+        description: >
+          If true and dest is not a directory, will download the file every time and replace the file if the contents change. 
+          Otherwise, the file will only be downloaded if the destination does not exist.
+        default: false
+        required: false
+      group:
+        type: string
+        description: Name of the group that should own the file/directory, as would be fed to chown.
+        required: false
+      mode:
+        type: string
+        description: The permissions the resulting file or directory should have (e.g., 644).
+        required: false
+      owner:
+        type: string
+        description: Name of the user that should own the file/directory, as would be fed to chown.
+        required: false
+      timeout:
+        type: integer
+        description: Timeout in seconds for URL request.
+        default: 10
+        required: false
+      url_username:
+        type: string
+        description: The username for use in HTTP basic authentication.
+        required: false
+      url_password:
+        type: string
+        description: The password for use in HTTP basic authentication.
+        required: false
+      validate_certs:
+        type: boolean
+        description: If no, SSL certificates will not be validated.
+        default: true
+        required: false
+    requirements:
+      - host_on_script:
+          capability: otc.capabilities.Container.File
+          relationship: tosca.relationships.HostedOn
+          occurrences: [0, 1]
+      - host:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            CHECKSUM: { get_property: [SELF, checksum] }
+            CLIENT_CERT: { get_property: [SELF, client_cert] }
+            CLIENT_KEY: { get_property: [SELF, client_key] }
+            DEST: { get_property: [SELF, dest] }
+            FORCE: { get_property: [SELF, force] }
+            GROUP: { get_property: [SELF, group] }
+            MODE: { get_property: [SELF, mode] }
+            OWNER: { get_property: [SELF, owner] }
+            TIMEOUT: { get_property: [SELF, timeout] }
+            URL: { get_property: [SELF, url] }
+            URL_USERNAME: { get_property: [SELF, url_username] }
+            URL_PASSWORD: { get_property: [SELF, url_password] }
+            VALIDATE_CERTS: { get_property: [SELF, validate_certs] }
+            COMPONENT_VERSION: { get_property: [SELF, component_version] }
+            ANSIBLE_BECOME: { get_property: [SELF, ansible_become] }
+          implementation: scripts/configure.yaml
+    artifacts:
+      - configure:
+          type: otc.artifacts.AnsibleTasksYmlFile
+          description: Specify additional ansible tasks (.yml) to execute after the file is downloaded.
+          file: default/configure.yml

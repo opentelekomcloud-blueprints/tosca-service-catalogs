@@ -1,0 +1,2 @@
+- debug:
+    msg: "Hello I am a default ansible task {{ NODE }} executing on {{ HOST }}. You can upload a .yml file in the configure artifact to replace me."

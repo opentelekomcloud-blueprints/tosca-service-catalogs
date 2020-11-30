@@ -1,0 +1,9 @@
+- hosts: all
+  strategy: free
+  gather_facts: yes
+  become: "{{ ANSIBLE_BECOME }}"
+  ignore_errors: "{{ IGNORE_ERRORS }}"
+  vars_files:
+    - "{{ ansible_variables }}"
+  tasks:
+    - include_tasks: "{{ add_source }}"

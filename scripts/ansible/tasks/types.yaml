@@ -1,0 +1,119 @@
+# Copyright (C) 2020 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.paas.scripts.ansible.tasks
+  template_version: 1.0.0
+  template_author: Tri
+
+description: >
+  A software component for users to upload ansible tasks and execute on the target node.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.paas.scripts.common:1.0.0
+
+node_types:
+  otc.nodes.SoftwareComponent.Ansible.AnsibleTasks:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: Ansible tasks
+    tags:
+      icon: /images/ansible.png
+    properties:
+      ansible_become:
+        type: boolean
+        description: Set to true to run the ansible with privilege escalation. Defaults to false.
+        default: false
+        required: false
+      ignore_errors:
+        type: boolean
+        description: Set to true to ignore any task errors. Defaults to false.
+        default: false
+        required: false
+    capabilities:
+      data_endpoint:
+        type: otc.capabilities.Endpoint
+      host_file:
+        type: otc.capabilities.Container.File
+        occurrences: [0, unbounded]
+    requirements:
+      - connect_to_data_endpoint:
+          capability: otc.capabilities.Endpoint
+          relationship: otc.relationships.AnsibleConnectToScriptComponent
+          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            COMPONENT_VERSION: { get_property: [SELF, component_version] }
+            ENV: { get_property: [SELF, data_endpoint, env] }
+            PROTOCOL: { get_property: [SELF, data_endpoint, protocol] }
+            PORT: { get_property: [SELF, data_endpoint, port] }
+            URL_PATH: { get_property: [SELF, data_endpoint, url_path] }
+            PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
+            ANSIBLE_BECOME: { get_property: [SELF, ansible_become] }
+            IGNORE_ERRORS: { get_property: [SELF, ignore_errors] }
+          implementation: scripts/configure.yaml
+    artifacts:
+      - ansible_variables:
+          type: otc.artifacts.AnsibleVariablesYmlFile
+          file: default/empty_vars.yml
+          description: Specify ansible variables to use in all ansible tasks.
+      - configure:
+          type: otc.artifacts.AnsibleTasksYmlFile
+          file: default/configure.yml
+          description: Specify ansible tasks (.yml) to configure the ansible component on the compute node.
+      - post_configure_source:
+          type: otc.artifacts.AnsibleTasksYmlFile
+          description: Specify ansible tasks (.yml) to connect to a target node.
+          file: default/post_configure_source.yml
+      - add_source:
+          type: otc.artifacts.AnsibleTasksYmlFile
+          description: Specify ansible tasks (.yml) to notify the target node that a source node is now available.
+          file: default/add_source.yml
+
+relationship_types:
+  otc.relationships.AnsibleConnectToScriptComponent:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        post_configure_source:
+          inputs:
+            SOURCE_COMPONENT_VERSION: { get_property: [SOURCE, component_version] }
+            SOURCE_IP: { get_attribute: [SOURCE, private_address] }
+            SOURCE_ENV: {get_property: [SOURCE, data_endpoint, env]}
+            SOURCE_PORT: { get_property: [SOURCE, data_endpoint, port] }
+            SOURCE_PROTOCOL: {get_property: [SOURCE, data_endpoint, protocol]}
+            SOURCE_URL_PATH: {get_property: [SOURCE, data_endpoint, url_path]}
+            SOURCE_PORT_NAME: {get_property: [SOURCE, data_endpoint, port_name]}
+            ANSIBLE_BECOME: { get_property: [SOURCE, ansible_become] }
+            IGNORE_ERRORS: { get_property: [SOURCE, ignore_errors] }
+            TARGET_COMPONENT_VERSION: { get_property: [TARGET, component_version] }
+            TARGET_IP: { get_attribute: [TARGET, private_address] }
+            TARGET_ENV: {get_property: [TARGET, data_endpoint, env]}
+            TARGET_PORT: { get_property: [TARGET, data_endpoint, port] }
+            TARGET_PROTOCOL: {get_property: [TARGET, data_endpoint, protocol]}
+            TARGET_URL_PATH: {get_property: [TARGET, data_endpoint, url_path]}
+            TARGET_PORT_NAME: {get_property: [TARGET, data_endpoint, port_name]}
+          implementation: scripts/post_configure_source.yaml
+        add_source:
+          inputs:
+            SOURCE_COMPONENT_VERSION: { get_property: [SOURCE, component_version] }
+            SOURCE_IP: { get_attribute: [SOURCE, private_address] }
+            SOURCE_ENV: {get_property: [SOURCE, data_endpoint, env]}
+            SOURCE_PORT: { get_property: [SOURCE, data_endpoint, port] }
+            SOURCE_PROTOCOL: {get_property: [SOURCE, data_endpoint, protocol]}
+            SOURCE_URL_PATH: {get_property: [SOURCE, data_endpoint, url_path]}
+            SOURCE_PORT_NAME: {get_property: [SOURCE, data_endpoint, port_name]}
+            ANSIBLE_BECOME: { get_property: [SOURCE, ansible_become] }
+            IGNORE_ERRORS: { get_property: [SOURCE, ignore_errors] }
+            TARGET_COMPONENT_VERSION: { get_property: [TARGET, component_version] }
+            TARGET_IP: { get_attribute: [TARGET, private_address] }
+            TARGET_ENV: {get_property: [TARGET, data_endpoint, env]}
+            TARGET_PORT: { get_property: [TARGET, data_endpoint, port] }
+            TARGET_PROTOCOL: {get_property: [TARGET, data_endpoint, protocol]}
+            TARGET_URL_PATH: {get_property: [TARGET, data_endpoint, url_path]}
+            TARGET_PORT_NAME: {get_property: [TARGET, data_endpoint, port_name]}
+          implementation: scripts/add_source.yaml
