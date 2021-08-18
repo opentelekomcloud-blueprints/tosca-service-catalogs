@@ -1,0 +1,866 @@
+# Copyright (C) 2021 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.hardening
+  template_version: 1.0.0
+  template_author: Tri
+
+description: DevSec Hardening Framework Baselines from https://dev-sec.io
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+data_types:
+  SshAuthorizedPrincipals:
+    derived_from: tosca.datatypes.Root
+    properties:
+      path:
+        type: string
+        required: true
+        description: >
+          Example: /etc/ssh/auth_principals/root
+      directorymode:
+        type: string
+        required: false
+        default: 0700
+      directoryowner:
+        type: string
+        description: >
+          Example: root
+        required: false
+      directorygroup:
+        type: string
+        description: >
+          Example: root
+        required: false
+      filemode:
+        type: string
+        required: false
+        default: 0600
+      owner:
+        type: string
+        description: >
+          Example: root
+        required: false
+      group:
+        type: string
+        description: >
+          Example: root
+        required: false
+
+  SshRemoteHosts:
+    derived_from: tosca.datatypes.Root
+    properties:
+      names:
+        type: list
+        entry_schema:
+          type: string
+        description: Example ['example.com', 'example2.com']
+      options:
+        type: list
+        entry_schema:
+          type: string
+        description: Example ['Port 2222', 'ForwardAgent yes']
+
+node_types:
+  otc.nodes.SoftwareComponent.Hardening.OsHardening:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      Provides numerous security-related configurations, providing all-round base protection, compliant with the DevSec Linux Baseline. Version 6.3.0 (2020-10-28).
+      See also: https://dev-sec.io/baselines/linux
+    tags:
+      icon: /images/logo.png
+    properties:
+      os_desktop_enable:
+        type: boolean
+        description: true if this is a desktop system, ie Xorg, KDE/GNOME/Unity/etc.
+        default: false
+      os_env_extra_user_paths:
+        type: list
+        entry_schema:
+          type: string
+        description: Add additional paths to the user's PATH variable (default is empty).
+        required: false
+      os_env_umask:
+        type: string
+        description: Set default permissions for new files to 750 or 700. Defaults to 027 or 077 depending on the platform.
+        required: false
+      os_auth_pw_max_age:
+        type: integer
+        description: Maximum password age (set to 99999 to effectively disable it).
+        default: 60
+      os_auth_pw_min_age:
+        type: integer
+        description: Minimum password age (before allowing any other password change).
+        default: 7
+      os_auth_pw_remember:
+        type: integer
+        description: How many used passwords are record.
+        default: 5
+      os_auth_retries:
+        type: integer
+        description: >
+          The maximum number of authentication attempts, before the account is locked for some time.
+          (!) We do not support changing this default value at the moment.
+        default: 5
+      os_auth_lockout_time:
+        type: integer
+        description: Time in seconds that needs to pass, if the account was locked due to too many failed authentication attempts.
+        default: 600
+      os_auth_timeout:
+        type: integer
+        description: Authentication timeout in seconds, so login will exit if this time passes.
+        default: 60
+      os_auth_allow_homeless:
+        type: boolean
+        description: true if to allow users without home to login.
+        default: false
+      os_auth_pam_passwdqc_enable:
+        type: boolean
+        description: true if you want to use strong password checking in PAM using passwdqc.
+        default: true
+      os_auth_pam_passwdqc_options:
+        type: string
+        description: Set to any option line (as a string) that you want to pass to passwdqc.
+        default: 'min=disabled,disabled,16,12,8'
+      os_auth_pam_sssd_enable:
+        type: boolean
+        description: activate PAM auth support for sssd. Defaults to false (on RHEL8/CentOS8/Fedora true).
+        required: false
+      os_security_users_allow:
+        type: list
+        entry_schema:
+          type: string
+        description: List of things, that a user is allowed to do. May contain 'change_user'.
+        required: false
+      os_security_kernel_enable_module_loading:
+        type: boolean
+        description: true if you want to allowed to change kernel modules once the system is running (eg modprobe, rmmod).
+        default: true
+      os_security_kernel_enable_core_dump:
+        type: boolean
+        description: Kernel is crashing or otherwise misbehaving and a kernel core dump is created.
+        default: false
+      os_security_suid_sgid_enforce:
+        type: boolean
+        description: true if you want to reduce SUID/SGID bits. There is already a list of items which are searched for configured, but you can also add your own.
+        default: true
+      os_security_suid_sgid_blacklist:
+        type: list
+        entry_schema:
+          type: string
+        description: A list of paths which should have their SUID/SGID bits removed.
+        required: false
+      os_security_suid_sgid_whitelist:
+        type: list
+        entry_schema:
+          type: string
+        description: A list of paths which should not have their SUID/SGID bits altered.
+        required: false
+      os_security_suid_sgid_remove_from_unknown:
+        type: boolean
+        description: >
+          true if you want to remove SUID/SGID bits from any file, that is not explicitly configured in a blacklist.
+          This will make every Ansible-run search through the mounted filesystems looking for SUID/SGID bits that are not configured in the default and user blacklist.
+          If it finds an SUID/SGID bit, it will be removed, unless this file is in your whitelist.
+        default: false
+      os_auth_uid_min:
+        type: integer
+        description: Minimum number for automatic uid selection in useradd.
+        default: 1000
+      os_auth_uid_max:
+        type: integer
+        description: Maximum number for automatic uid selection in useradd.
+        default: 60000
+      os_auth_gid_min:
+        type: integer
+        description: Minimum number for automatic gid selection in groupadd.
+        default: 1000
+      os_auth_gid_max:
+        type: integer
+        description: Maximum number for automatic gid selection in groupadd.
+        default: 60000
+      os_auth_sub_uid_count:
+        type: integer
+        description: >
+          If /etc/subuid exists, the commands useradd and newusers (unless the user already have subordinate user IDs)
+          allocate SUB_UID_COUNT unused user IDs from the range SUB_UID_MIN to SUB_UID_MAX for each new user.
+          See also os_auth_sub_uid_min and os_auth_sub_uid_max.
+        default: 65536
+      os_auth_sub_uid_min:
+        type: integer
+        description: Minimum number for automatic subordinate uid selection in useradd and newusers.
+        default: 100000
+      os_auth_sub_uid_max:
+        type: integer
+        description: Maximum number for automatic subordinate uid selection in useradd and newusers.
+        default: 600100000
+      os_auth_sub_gid_count:
+        type: integer
+        description: >
+          If /etc/subuid exists, the commands useradd and newusers (unless the user already have subordinate group IDs)
+          allocate SUB_GID_COUNT unused group IDs from the range SUB_GID_MIN to SUB_GID_MAX for each new user.
+          See also os_auth_sub_gid_min and os_auth_sub_gid_max.
+        default: 65536
+      os_auth_sub_gid_min:
+        type: integer
+        description: Minimum number for automatic subordinate gid selection in useradd and newusers.
+        default: 100000
+      os_auth_sub_gid_max:
+        type: integer
+        description: Maximum number for automatic subordinate gid selection in useradd and newusers.
+        default: 600100000
+      os_security_packages_clean:
+        type: boolean
+        description: >
+          Removes packages with known security issues: xinetd (NSA, Chapter 3.2.1), inetd (NSA, Chapter 3.2.1),
+          tftp-server (NSA, Chapter 3.2.5), ypserv (NSA, Chapter 3.2.4), telnet-server (NSA, Chapter 3.2.2), rsh-server (NSA, Chapter 3.2.3),
+          prelink (open-scap).
+        default: true
+      os_selinux_state:
+        type: string
+        description: Set the SELinux state, can be either disabled, permissive, or enforcing.
+        default: 'enforcing'
+      os_selinux_policy:
+        type: string
+        description: Set the SELinux polixy.
+        default: 'targeted'
+      ufw_manage_defaults:
+        type: boolean
+        description: true means apply all settings with ufw_ prefix.
+        default: true
+      ufw_ipt_sysctl:
+        type: string
+        description: >
+          By default it disables IPT_SYSCTL in /etc/default/ufw.
+          If you want to overwrite /etc/sysctl.conf values using ufw - set it to your sysctl dictionary, for example /etc/ufw/sysctl.conf.
+        required: false
+      ufw_default_input_policy:
+        type: string
+        description: Set default input policy of ufw to DROP.
+        default: DROP
+      ufw_default_output_policy:
+        type: string
+        description: Set default output policy of ufw to ACCEPT.
+        default: ACCEPT
+      ufw_default_forward_policy:
+        type: string
+        description: Set default forward policy of ufw to DROP.
+        default: DROP
+      ufw_enable_ipv6:
+        type: boolean
+        description: Set to true to apply rules to support IPv6 (no means only IPv6 on loopback accepted).
+        default: true
+      os_auditd_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring auditd.
+        default: true
+      os_auditd_max_log_file_action:
+        type: string
+        description: >
+          Defines the behaviour of auditd when its log file is filled up. 
+          Possible other values are described in the auditd.conf man page. The most common alternative to the default may be rotate.
+        default: keep_logs
+      os_auditd_max_log_file:
+        type: integer
+        description: This keyword specifies the maximum file size in megabytes. When this limit is reached, it will trigger a configurable action. The value given must be numeric.
+        default: 6
+      hidepid_option:
+        type: string
+        constraints:
+          - valid_values: ["0", "1", "2"]
+        description: >
+          0: This is the default setting and gives you the default behaviour.
+          1: With this option an normal user would not see other processes but their own about ps, top etc, but he is still able to see process IDs in /proc.
+          2: Users are only able too see their own processes (like with hidepid=1), but also the other process IDs are hidden for them in /proc.
+          Defaults to 2 (on RHEL/CentOS7 0, see known limitations at https://github.com/dev-sec/ansible-collection-hardening/tree/master/roles/os_hardening).
+        default: '2'
+        required: true
+      proc_mnt_options:
+        type: string
+        description: Mount proc with hardenized options, including hidepid with variable value. Defaults to rw,nosuid,nodev,noexec,relatime,hidepid={{ hidepid_option }}.
+        required: false
+      os_ignore_home_folder_users:
+        type: string
+        description: Specify user home folders in /home that shouldn't be chmodded to 700
+        default: 'lost+found'
+      os_cron_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring cron.
+        default: true
+      os_limits_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring limits.
+        default: true
+      os_login_defs_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring login_defs.
+        default: true
+      os_minimize_access_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring minimize_access.
+        default: true
+      os_pam_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring pam.
+        default: true
+      os_modprobe_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring modprobe.
+        default: true
+      os_profile_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring profile.
+        default: true
+      os_securetty_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring securetty.
+        default: true
+      os_sysctl_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring sysctl.
+        default: true
+      os_user_accounts_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring user_accounts.
+        default: true
+      os_rhosts_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring rhosts.
+        default: true
+      os_yum_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring yum.
+        default: true
+      os_apt_enabled:
+        type: boolean
+        description: >
+          Set to false to disable installing and configuring apt.
+          If set to true, the following packages with known security issues are removed 'xinetd', 'inetd', 'ypserv', 'telnet-server', 'rsh-server', 'prelink'.
+        default: true
+      os_selinux_enabled:
+        type: boolean
+        description: Set to false to disable installing and configuring selinux.
+        default: true
+      os_sha_crypt_min_rounds:
+        type: integer
+        constraints:
+          - in_range: [ 1000, 999999999 ]
+        description: >
+          Define the number of minimum SHA rounds. With a lot of rounds brute forcing the password is more difficult.
+          But note also that it more CPU resources will be needed to authenticate users. The values must be inside the 1000-999999999 range.
+        default: 640000
+      os_sha_crypt_max_rounds:
+        type: integer
+        constraints:
+          - in_range: [ 1000, 999999999 ]
+        description: >
+          Define the number of maximum SHA rounds. With a lot of rounds brute forcing the password is more difficult.
+          But note also that it more CPU resources will be needed to authenticate users. The values must be inside the 1000-999999999 range.
+        default: 640000
+    interfaces:
+      Standard:
+        create:
+          description: Install OS hardening
+          inputs:
+            OS_DESKTOP_ENABLE: { get_property: [SELF, os_desktop_enable] }
+            OS_ENV_EXTRA_USER_PATHS: { get_property: [SELF, os_env_extra_user_paths] }
+            OS_ENV_UMASK: { get_property: [SELF, os_env_umask] }
+            OS_AUTH_PW_MAX_AGE: { get_property: [SELF, os_auth_pw_max_age] }
+            OS_AUTH_PW_MIN_AGE: { get_property: [SELF, os_auth_pw_min_age] }
+            OS_AUTH_PW_REMEMBER: { get_property: [SELF, os_auth_pw_remember] }
+            OS_AUTH_RETRIES: { get_property: [SELF, os_auth_retries] }
+            OS_AUTH_LOCKOUT_TIME: { get_property: [SELF, os_auth_lockout_time] }
+            OS_AUTH_TIMEOUT: { get_property: [SELF, os_auth_timeout] }
+            OS_AUTH_ALLOW_HOMELESS: { get_property: [SELF, os_auth_allow_homeless] }
+            OS_AUTH_PAM_PASSWDQC_ENABLE: { get_property: [SELF, os_auth_pam_passwdqc_enable] }
+            OS_AUTH_PAM_PASSWDQC_OPTIONS: { get_property: [SELF, os_auth_pam_passwdqc_options] }
+            OS_AUTH_PAM_SSSD_ENABLE: { get_property: [SELF, os_auth_pam_sssd_enable] }
+            OS_SECURITY_USERS_ALLOW: { get_property: [SELF, os_security_users_allow] }
+            OS_SECURITY_KERNEL_ENABLE_MODULE_LOADING: { get_property: [SELF, os_security_kernel_enable_module_loading] }
+            OS_SECURITY_KERNEL_ENABLE_CORE_DUMP: { get_property: [SELF, os_security_kernel_enable_core_dump] }
+            OS_SECURITY_SUID_SGID_ENFORCE: { get_property: [SELF, os_security_suid_sgid_enforce] }
+            OS_SECURITY_SUID_SGID_BLACKLIST: { get_property: [SELF, os_security_suid_sgid_blacklist] }
+            OS_SECURITY_SUID_SGID_WHITELIST: { get_property: [SELF, os_security_suid_sgid_whitelist] }
+            OS_SECURITY_SUID_SGID_REMOVE_FROM_UNKNOWN: { get_property: [SELF, os_security_suid_sgid_remove_from_unknown] }
+            OS_AUTH_UID_MIN: { get_property: [SELF, os_auth_uid_min] }
+            OS_AUTH_UID_MAX: { get_property: [SELF, os_auth_uid_max] }
+            OS_AUTH_GID_MIN: { get_property: [SELF, os_auth_gid_min] }
+            OS_AUTH_GID_MAX: { get_property: [SELF, os_auth_gid_max] }
+            OS_AUTH_SUB_UID_COUNT: { get_property: [SELF, os_auth_sub_uid_count] }
+            OS_AUTH_SUB_UID_MIN: { get_property: [SELF, os_auth_sub_uid_min] }
+            OS_AUTH_SUB_UID_MAX: { get_property: [SELF, os_auth_sub_uid_max] }
+            OS_AUTH_SUB_GID_COUNT: { get_property: [SELF, os_auth_sub_gid_count] }
+            OS_AUTH_SUB_GID_MIN: { get_property: [SELF, os_auth_sub_gid_min] }
+            OS_AUTH_SUB_GID_MAX: { get_property: [SELF, os_auth_sub_gid_max] }
+            OS_SECURITY_PACKAGES_CLEAN: { get_property: [SELF, os_security_packages_clean] }
+            OS_SELINUX_STATE: { get_property: [SELF, os_selinux_state] }
+            OS_SELINUX_POLICY: { get_property: [SELF, os_selinux_policy] }
+            UFW_MANAGE_DEFAULTS: { get_property: [SELF, ufw_manage_defaults] }
+            UFW_IPT_SYSCTL: { get_property: [SELF, ufw_ipt_sysctl] }
+            UFW_DEFAULT_INPUT_POLICY: { get_property: [SELF, ufw_default_input_policy] }
+            UFW_DEFAULT_OUTPUT_POLICY: { get_property: [SELF, ufw_default_output_policy] }
+            UFW_DEFAULT_FORWARD_POLICY: { get_property: [SELF, ufw_default_forward_policy] }
+            UFW_ENABLE_IPV6: { get_property: [SELF, ufw_enable_ipv6] }
+            OS_AUDITD_ENABLED: { get_property: [SELF, os_auditd_enabled] }
+            OS_AUDITD_MAX_LOG_FILE_ACTION: { get_property: [SELF, os_auditd_max_log_file_action] }
+            OS_AUDITD_MAX_LOG_FILE: { get_property: [SELF, os_auditd_max_log_file] }
+            HIDEPID_OPTION: { get_property: [SELF, hidepid_option] }
+            PROC_MNT_OPTIONS: { get_property: [SELF, proc_mnt_options] }
+            OS_IGNORE_HOME_FOLDER_USERS: { get_property: [SELF, os_ignore_home_folder_users] }
+            OS_CRON_ENABLED: { get_property: [SELF, os_cron_enabled] }
+            OS_LIMITS_ENABLED: { get_property: [SELF, os_limits_enabled] }
+            OS_LOGIN_DEFS_ENABLED: { get_property: [SELF, os_login_defs_enabled] }
+            OS_MINIMIZE_ACCESS_ENABLED: { get_property: [SELF, os_minimize_access_enabled] }
+            OS_PAM_ENABLED: { get_property: [SELF, os_pam_enabled] }
+            OS_MODPROBE_ENABLED: { get_property: [SELF, os_modprobe_enabled] }
+            OS_PROFILE_ENABLED: { get_property: [SELF, os_profile_enabled] }
+            OS_SECURETTY_ENABLED: { get_property: [SELF, os_securetty_enabled] }
+            OS_SYSCTL_ENABLED: { get_property: [SELF, os_sysctl_enabled] }
+            OS_USER_ACCOUNTS_ENABLED: { get_property: [SELF, os_user_accounts_enabled] }
+            OS_RHOSTS_ENABLED: { get_property: [SELF, os_rhosts_enabled] }
+            OS_YUM_ENABLED: { get_property: [SELF, os_yum_enabled] }
+            OS_APT_ENABLED: { get_property: [SELF, os_apt_enabled] }
+            OS_SELINUX_ENABLED: { get_property: [SELF, os_selinux_enabled] }
+            OS_SHA_CRYPT_MIN_ROUNDS: { get_property: [SELF, os_sha_crypt_min_rounds] }
+            OS_SHA_CRYPT_MAX_ROUNDS: { get_property: [SELF, os_sha_crypt_max_rounds] }
+          implementation: playbooks/os-hardening-install.yaml
+
+  otc.nodes.SoftwareComponent.Hardening.SshHardening:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      Provides secure ssh-client and ssh-server configurations, compliant with the DevSec SSH Baseline. Version 9.8.0 (2020-10-15).
+      See also: https://dev-sec.io/baselines/ssh/
+    tags:
+      icon: /images/logo.png
+    properties:
+      network_ipv6_enable:
+        type: boolean
+        description: False if IPv6 is not needed. ssh_listen_to must also be set to listen to IPv6 addresses (for example [::]).
+        default: true
+      ssh_client_config_file:
+        type: string
+        description: Path of the ssh client configuration file, e.g. /etc/ssh/ssh_config.d/custom.conf.
+        default: '/etc/ssh/ssh_config'
+      ssh_server_config_file:
+        type: string
+        description: Path of the ssh server configuration file, e.g. /etc/ssh/sshd_config.d/custom.conf.
+        default: '/etc/ssh/sshd_config'
+      ssh_client_port:
+        type: string
+        description: Specifies the port number to connect on the remote host.
+        default: '22'
+      ssh_listen_to:
+        type: list
+        entry_schema:
+          type: string
+        description: One or more ip addresses, to which ssh-server should listen to. Default is all IPv4 adresses, but should be configured to specific addresses for security reasons!
+        default: ['0.0.0.0']
+      ssh_host_key_files:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          Host keys for sshd. If empty ['/etc/ssh/ssh_host_rsa_key', '/etc/ssh/ssh_host_ecdsa_key', '/etc/ssh/ssh_host_ed25519_key'] will be used,
+          as far as supported by the installed sshd version.
+        required: false
+      ssh_host_rsa_key_size:
+        type: integer
+        description: Specifies the number of bits in the private host RSA key to create.
+        default: 4096
+      ssh_host_key_algorithms:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          Host key algorithms that the server offers. If empty the default list will be used.
+          Otherwise overrides the setting with specified list of algorithms.
+          Check man sshd_config, ssh -Q HostKeyAlgorithms or other sources for supported algorithms - make sure you check the correct version!
+        required: false
+      ssh_client_host_key_algorithms:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          Specifies the host key algorithms that the client wants to use in order of preference.
+          If empty the default list will be used. Otherwise overrides the setting with specified list of algorithms.
+          Check man ssh_config, ssh -Q HostKeyAlgorithms or other sources for supported algorithms - make sure you check the correct version!
+        required: false
+      ssh_client_alive_interval:
+        type: integer
+        description: Specifies an interval for sending keepalive messages.
+        default: 600
+      ssh_client_alive_count:
+        type: integer
+        description: Defines how often keep-alive messages are sent.
+        default: 3
+      ssh_permit_tunnel:
+        type: boolean
+        description: true if SSH Port Tunneling is required.
+        default: false
+      ssh_remote_hosts:
+        type: list
+        entry_schema:
+          type: SshRemoteHosts
+        description: >
+          One or more hosts and their custom options for the ssh-client. Default is empty.
+          See examples in https://github.com/dev-sec/ansible-collection-hardening/blob/master/roles/ssh_hardening/defaults/main.yml
+        required: false
+      ssh_permit_root_login:
+        type: string
+        description: Disable root-login. Set to 'without-password' or 'yes' to enable root-login - The quotes are required!
+        default: 'no'
+      ssh_allow_tcp_forwarding:
+        type: string
+        description: >
+          'no' to disable TCP Forwarding. Set to 'yes' to allow TCP Forwarding. If you are using OpenSSH >= 6.2 version, you can specify 'yes', 'no', 'all', 'local'or'remote'.
+          Note: values passed to this variable must be strings, thus values 'yes'and'no' should be passed with quotes.
+        default: 'no'
+      ssh_gateway_ports:
+        type: boolean
+        description: >
+          false to disable binding forwarded ports to non-loopback addresses. Set to true to force binding on wildcard address.
+          Set to clientspecified to allow the client to specify which address to bind to.
+        default: false
+      ssh_allow_agent_forwarding:
+        type: boolean
+        description: false to disable Agent Forwarding. Set to true to allow Agent Forwarding.
+        default: false
+      ssh_x11_forwarding:
+        type: boolean
+        description: false to disable X11 Forwarding. Set to true to allow X11 Forwarding.
+        default: false
+      ssh_pam_support:
+        type: boolean
+        description: true if SSH has PAM support.
+        default: true
+      ssh_use_pam:
+        type: boolean
+        description: false to disable pam authentication.
+        default: true
+      ssh_gssapi_support:
+        type: boolean
+        description: Set to true to enable GSSAPI authentication (both client and server).
+        default: false
+      ssh_gssapi_delegation:
+        type: boolean
+        description: Set to true to enable GSSAPI credential forwarding.
+        default: false
+      ssh_kerberos_support:
+        type: boolean
+        description: true if SSH has Kerberos support.
+        default: true
+      ssh_deny_users:
+        type: string
+        description: If specified, login is disallowed for user names that match one of the patterns.
+        required: false
+      ssh_allow_users:
+        type: string
+        description: If specified, login is allowed only for user names that match one of the patterns.
+        required: false
+      ssh_deny_groups:
+        type: string
+        description: If specified, login is disallowed for users whose primary group or supplementary group list matches one of the patterns.
+        required: false
+      ssh_allow_groups:
+        type: string
+        description: If specified, login is allowed only for users whose primary group or supplementary group list matches one of the patterns.
+        required: false
+      ssh_authorized_keys_file:
+        type: string
+        description: Change default file that contains the public keys that can be used for user authentication.
+        required: false
+      ssh_trusted_user_ca_keys_file:
+        type: string
+        description: Specifies the file containing trusted certificate authorities public keys used to sign user certificates.
+        required: false
+      ssh_trusted_user_ca_keys:
+        type: list
+        entry_schema:
+          type: string
+        description: Set the trusted certificate authorities public keys used to sign user certificates. Only used if ssh_trusted_user_ca_keys_file is set.
+        required: false
+      ssh_authorized_principals_file:
+        type: string
+        description: Specifies the file containing principals that are allowed. Only used if ssh_trusted_user_ca_keys_file is set.
+        required: false
+      ssh_authorized_principals:
+        type: list
+        entry_schema:
+          type: SshAuthorizedPrincipals
+        description: >
+          List of hashes containing file paths and authorized principals. Only used if ssh_authorized_principals_file is set.
+          See examples in https://github.com/dev-sec/ansible-collection-hardening/blob/master/roles/ssh_hardening/defaults/main.yml
+        required: false
+      ssh_print_motd:
+        type: boolean
+        description: false to disable printing of the MOTD.
+        default: false
+      ssh_print_pam_motd:
+        type: boolean
+        description: false to disable printing of the MOTD via pam (Debian and Ubuntu).
+        default: false
+      ssh_print_last_log:
+        type: boolean
+        description: false to disable display of last login information.
+        default: false
+      sftp_enabled:
+        type: boolean
+        description: true to enable sftp configuration.
+        default: false
+      sftp_umask:
+        type: string
+        description: Specifies the umask for sftp.
+        default: '0027'
+      sftp_chroot:
+        type: boolean
+        description: false to disable chroot for sftp.
+        default: true
+      sftp_chroot_dir:
+        type: string
+        description: Change default sftp chroot location.
+        default: '/home/%u'
+      ssh_client_roaming:
+        type: boolean
+        description: Enable experimental client roaming.
+        default: false
+      sshd_moduli_file:
+        type: string
+        description: Path to the SSH moduli file.
+        default: '/etc/ssh/moduli'
+      sshd_moduli_minimum:
+        type: integer
+        description: Remove Diffie-Hellman parameters smaller than the defined size to mitigate logjam.
+        default: 2048
+      ssh_challengeresponseauthentication:
+        type: boolean
+        description: Specifies whether challenge-response authentication is allowed (e.g. via PAM).
+        default: false
+      ssh_client_password_login:
+        type: boolean
+        description: >
+          true to allow password-based authentication to the ssh server.
+          You probably also need to change sshd_authenticationmethods to include password if you set ssh_server_password_login: true.
+        default: false
+      ssh_banner:
+        type: boolean
+        description: true to print a banner on login.
+        default: false
+      ssh_banner_path:
+        type: string
+        description: Path to the SSH banner file.
+        default: '/etc/sshd/banner.txt'
+      ssh_client_hardening:
+        type: boolean
+        description: false to stop harden the client.
+        default: true
+      ssh_client_compression:
+        type: boolean
+        description: Specifies whether the client requests compression.
+        default: false
+      ssh_compression:
+        type: boolean
+        description: Specifies whether server-side compression is enabled after the user has authenticated successfully.
+        default: false
+      ssh_login_grace_time:
+        type: string
+        description: Specifies the time allowed for successful authentication to the SSH server.
+        default: '30s'
+      ssh_max_auth_retries:
+        type: integer
+        description: Specifies the maximum number of authentication attempts permitted per connection.
+        default: 2
+      ssh_max_sessions:
+        type: integer
+        description: Specifies the maximum number of open sessions permitted from a given connection.
+        default: 10
+      ssh_print_debian_banner:
+        type: boolean
+        description: true to print debian specific banner.
+        default: false
+      ssh_server_enabled:
+        type: boolean
+        description: false to disable the opensshd server.
+        default: true
+      ssh_server_hardening:
+        type: boolean
+        description: false to stop harden the server.
+        default: true
+      ssh_server_match_address:
+        type: string
+        description: >
+          Introduces a conditional block. If all of the criteria on the Match line are satisfied,
+          the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file.
+        required: false
+      ssh_server_match_group:
+        type: string
+        description: >
+          Introduces a conditional block. If all of the criteria on the Match line are satisfied,
+          the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file.
+        required: false
+      ssh_server_match_user:
+        type: string
+        description: >
+          Introduces a conditional block. If all of the criteria on the Match line are satisfied,
+          the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file.
+        required: false
+      ssh_server_match_local_port:
+        type: string
+        description: >
+          Introduces a conditional block. If all of the criteria on the Match line are satisfied,
+          the keywords on the following lines override those set in the global section of the config file, until either another Match line or the end of the file.
+        required: false
+      ssh_server_permit_environment_vars:
+        type: string
+        description: >
+          yes to specify that ~/.ssh/environment and environment= options in ~/.ssh/authorized_keys are processed by sshd.
+          With openssh version 7.8 it is possible to specify a whitelist of environment variable names in addition to global "yes" or "no" settings.
+        default: 'no'
+      ssh_server_accept_env_vars:
+        type: string
+        description: Specifies what environment variables sent by the client will be copied into the session's environment, multiple environment variables may be separated by whitespace.
+        required: false
+      ssh_use_dns:
+        type: boolean
+        description: Specifies whether sshd should look up the remote host name, and to check that the resolved host name for the remote IP address maps back to the very same IP address.
+        default: false
+      ssh_server_revoked_keys:
+        type: list
+        entry_schema:
+          type: string
+        description: A list of revoked public keys that the ssh server will always reject, useful to revoke known weak or compromised keys.
+        required: false
+      ssh_max_startups:
+        type: string
+        description: Specifies the maximum number of concurrent unauthenticated connections to the SSH daemon.
+        default: '10:30:60'
+      ssh_macs:
+        type: list
+        entry_schema:
+          type: string
+        description: Change this list to overwrite macs. Defaults found in defaults/main.yml.
+        required: false
+      ssh_kex:
+        type: list
+        entry_schema:
+          type: string
+        description: Change this list to overwrite kexs. Defaults found in defaults/main.yml.
+        required: false
+      ssh_ciphers:
+        type: list
+        entry_schema:
+          type: string
+        description: Change this list to overwrite ciphers. Defaults found in defaults/main.yml.
+        required: false
+      ssh_custom_options:
+        type: list
+        entry_schema:
+          type: string
+        description: Custom lines for SSH client configuration.
+        required: false
+      sshd_custom_options:
+        type: list
+        entry_schema:
+          type: string
+        description: Custom lines for SSH daemon configuration.
+        required: false
+      sshd_syslog_facility:
+        type: string
+        description: The facility code that is used when logging messages from sshd.
+        default: 'AUTH'
+      sshd_log_level:
+        type: string
+        description: The verbosity level that is used when logging messages from sshd.
+        default: 'VERBOSE'
+      sshd_strict_modes:
+        type: boolean
+        description: Check file modes and ownership of the user's files and home directory before accepting login.
+        default: true
+      sshd_authenticationmethods:
+        type: string
+        description: >
+          Specifies the authentication methods that must be successfully completed for a user to be granted access.
+          Make sure to set all required variables for your selected authentication method. Defaults found in defaults/main.yml.
+        default: 'publickey'
+    interfaces:
+      Standard:
+        create:
+          description: Install SSH Hardening
+          inputs:
+            NETWORK_IPV6_ENABLE: { get_property: [SELF, network_ipv6_enable] }
+            SSH_CLIENT_CONFIG_FILE: { get_property: [SELF, ssh_client_config_file] }
+            SSH_SERVER_CONFIG_FILE: { get_property: [SELF, ssh_server_config_file] }
+            SSH_CLIENT_PORT: { get_property: [SELF, ssh_client_port] }
+            SSH_LISTEN_TO: { get_property: [SELF, ssh_listen_to] }
+            SSH_HOST_KEY_FILES: { get_property: [SELF, ssh_host_key_files] }
+            SSH_HOST_RSA_KEY_SIZE: { get_property: [SELF, ssh_host_rsa_key_size] }
+            SSH_HOST_KEY_ALGORITHMS: { get_property: [SELF, ssh_host_key_algorithms] }
+            SSH_CLIENT_HOST_KEY_ALGORITHMS: { get_property: [SELF, ssh_client_host_key_algorithms] }
+            SSH_CLIENT_ALIVE_INTERVAL: { get_property: [SELF, ssh_client_alive_interval] }
+            SSH_CLIENT_ALIVE_COUNT: { get_property: [SELF, ssh_client_alive_count] }
+            SSH_PERMIT_TUNNEL: { get_property: [SELF, ssh_permit_tunnel] }
+            SSH_REMOTE_HOSTS: { get_property: [SELF, ssh_remote_hosts] }
+            SSH_PERMIT_ROOT_LOGIN: { get_property: [SELF, ssh_permit_root_login] }
+            SSH_ALLOW_TCP_FORWARDING: { get_property: [SELF, ssh_allow_tcp_forwarding] }
+            SSH_GATEWAY_PORTS: { get_property: [SELF, ssh_gateway_ports] }
+            SSH_ALLOW_AGENT_FORWARDING: { get_property: [SELF, ssh_allow_agent_forwarding] }
+            SSH_X11_FORWARDING: { get_property: [SELF, ssh_x11_forwarding] }
+            SSH_PAM_SUPPORT: { get_property: [SELF, ssh_pam_support] }
+            SSH_USE_PAM: { get_property: [SELF, ssh_use_pam] }
+            SSH_GSSAPI_SUPPORT: { get_property: [SELF, ssh_gssapi_support] }
+            SSH_GSSAPI_DELEGATION: { get_property: [SELF, ssh_gssapi_delegation] }
+            SSH_KERBEROS_SUPPORT: { get_property: [SELF, ssh_kerberos_support] }
+            SSH_DENY_USERS: { get_property: [SELF, ssh_deny_users] }
+            SSH_ALLOW_USERS: { get_property: [SELF, ssh_allow_users] }
+            SSH_DENY_GROUPS: { get_property: [SELF, ssh_deny_groups] }
+            SSH_ALLOW_GROUPS: { get_property: [SELF, ssh_allow_groups] }
+            SSH_AUTHORIZED_KEYS_FILE: { get_property: [SELF, ssh_authorized_keys_file] }
+            SSH_TRUSTED_USER_CA_KEYS_FILE: { get_property: [SELF, ssh_trusted_user_ca_keys_file] }
+            SSH_TRUSTED_USER_CA_KEYS: { get_property: [SELF, ssh_trusted_user_ca_keys] }
+            SSH_AUTHORIZED_PRINCIPALS_FILE: { get_property: [SELF, ssh_authorized_principals_file] }
+            SSH_AUTHORIZED_PRINCIPALS: { get_property: [SELF, ssh_authorized_principals] }
+            SSH_PRINT_MOTD: { get_property: [SELF, ssh_print_motd] }
+            SSH_PRINT_PAM_MOTD: { get_property: [SELF, ssh_print_pam_motd] }
+            SSH_PRINT_LAST_LOG: { get_property: [SELF, ssh_print_last_log] }
+            SFTP_ENABLED: { get_property: [SELF, sftp_enabled] }
+            SFTP_UMASK: { get_property: [SELF, sftp_umask] }
+            SFTP_CHROOT: { get_property: [SELF, sftp_chroot] }
+            SFTP_CHROOT_DIR: { get_property: [SELF, sftp_chroot_dir] }
+            SSH_CLIENT_ROAMING: { get_property: [SELF, ssh_client_roaming] }
+            SSHD_MODULI_FILE: { get_property: [SELF, sshd_moduli_file] }
+            SSHD_MODULI_MINIMUM: { get_property: [SELF, sshd_moduli_minimum] }
+            SSH_CHALLENGERESPONSEAUTHENTICATION: { get_property: [SELF, ssh_challengeresponseauthentication] }
+            SSH_CLIENT_PASSWORD_LOGIN: { get_property: [SELF, ssh_client_password_login] }
+            SSH_BANNER: { get_property: [SELF, ssh_banner] }
+            SSH_BANNER_PATH: { get_property: [SELF, ssh_banner_path] }
+            SSH_CLIENT_HARDENING: { get_property: [SELF, ssh_client_hardening] }
+            SSH_CLIENT_COMPRESSION: { get_property: [SELF, ssh_client_compression] }
+            SSH_COMPRESSION: { get_property: [SELF, ssh_compression] }
+            SSH_LOGIN_GRACE_TIME: { get_property: [SELF, ssh_login_grace_time] }
+            SSH_MAX_AUTH_RETRIES: { get_property: [SELF, ssh_max_auth_retries] }
+            SSH_MAX_SESSIONS: { get_property: [SELF, ssh_max_sessions] }
+            SSH_PRINT_DEBIAN_BANNER: { get_property: [SELF, ssh_print_debian_banner] }
+            SSH_SERVER_ENABLED: { get_property: [SELF, ssh_server_enabled] }
+            SSH_SERVER_HARDENING: { get_property: [SELF, ssh_server_hardening] }
+            SSH_SERVER_MATCH_ADDRESS: { get_property: [SELF, ssh_server_match_address] }
+            SSH_SERVER_MATCH_GROUP: { get_property: [SELF, ssh_server_match_group] }
+            SSH_SERVER_MATCH_USER: { get_property: [SELF, ssh_server_match_user] }
+            SSH_SERVER_MATCH_LOCAL_PORT: { get_property: [SELF, ssh_server_match_local_port] }
+            SSH_SERVER_PERMIT_ENVIRONMENT_VARS: { get_property: [SELF, ssh_server_permit_environment_vars] }
+            SSH_SERVER_ACCEPT_ENV_VARS: { get_property: [SELF, ssh_server_accept_env_vars] }
+            SSH_USE_DNS: { get_property: [SELF, ssh_use_dns] }
+            SSH_SERVER_REVOKED_KEYS: { get_property: [SELF, ssh_server_revoked_keys] }
+            SSH_MAX_STARTUPS: { get_property: [SELF, ssh_max_startups] }
+            SSH_MACS: { get_property: [SELF, ssh_macs] }
+            SSH_KEX: { get_property: [SELF, ssh_kex] }
+            SSH_CIPHERS: { get_property: [SELF, ssh_ciphers] }
+            SSH_CUSTOM_OPTIONS: { get_property: [SELF, ssh_custom_options] }
+            SSHD_CUSTOM_OPTIONS: { get_property: [SELF, sshd_custom_options] }
+            SSHD_SYSLOG_FACILITY: { get_property: [SELF, sshd_syslog_facility] }
+            SSHD_LOG_LEVEL: { get_property: [SELF, sshd_log_level] }
+            SSHD_STRICT_MODES: { get_property: [SELF, sshd_strict_modes] }
+            SSHD_AUTHENTICATIONMETHODS: { get_property: [SELF, sshd_authenticationmethods] }
+          implementation: playbooks/ssh-hardening-install.yaml
