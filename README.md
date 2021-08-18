@@ -1,13 +1,13 @@
-# tosca-marketplace
+# tosca-service-catalogs
 
-Collection of TOSCA software components available in the market place of the Cloud Topology Designer.
+Collection of service catalogs in the Cloud Topology Designer.
 
 ## How to contribute?
 
-You can define a software component and send a Pull Request (PR). After your PR is accepted, the software component is available in the Cloud Topology Designer.
+A service catalog is a [software component in TOSCA](https://docs.oasis-open.org/tosca/TOSCA-Simple-Profile-YAML/v1.3/os/TOSCA-Simple-Profile-YAML-v1.3-os.html#DEFN_TYPE_NODES_SOFTWARE_COMPONENT).
 
-(cont.)
+You can define a service catalog and send a Pull Request (PR). After your PR is accepted, the service catalog is available in the [Cloud Topology Designer](https://designer.otc-service.com).
 
 ## How to define a software component in TOSCA?
 
-[See tutorials](https://docs.designer.otc-service.com/examples/tosca-tutorials/lifecycle_soft_comp)
+[See our tutorials](https://docs.designer.otc-service.com/examples/tosca-tutorials/lifecycle_soft_comp)
