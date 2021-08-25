@@ -13,7 +13,7 @@ This service catalog (when putting on a compute node) automates the security req
 * Put the component `SshHardening` (and/or `OsHardening`) on a compute node.
 * Customize the property as needed (e.g., enable/disable SSH agent forwarding).
 
-![Fig. SSH Hardening](/img/ctd-pics/service-catalogs-ssh-hardning.png 'SSH Hardening')
+![Fig. SSH Hardening](https://docs.designer.otc-service.com/img/ctd-pics/service-catalogs-ssh-hardning.png 'SSH Hardening')
 
 The default properties enforce hardening on the VM following the [SSH Baseline](https://dev-sec.io/baselines/ssh/) and the [Linux Security Baseline](https://dev-sec.io/baselines/linux/) from the DevSec project so you do not need to do anything further. For example, when putting the `SshHardening` on a compute node, SSH agent forwarding is disabled on the VM by default as it can be used in a limited way to enable attacks (See the requirement **ssh-11** from the [SSH Baseline](https://dev-sec.io/baselines/ssh/)).
 
