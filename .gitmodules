@@ -1,3 +1,6 @@
 [submodule "hardening/playbooks/ansible-collection-hardening"]
 	path = hardening/playbooks/ansible-collection-hardening
 	url = https://github.com/dev-sec/ansible-collection-hardening.git
+[submodule "mongodb/playbooks/roles/undergreen.ansible-role-mongodb"]
+	path = mongodb/playbooks/roles/undergreen.ansible-role-mongodb
+	url = https://github.com/UnderGreen/ansible-role-mongodb.git
