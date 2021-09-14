@@ -2,4 +2,4 @@
 
 Ansible roles from https://github.com/UnderGreen/ansible-role-mongodb
 
-Using master 68e1860
+Using release 2.7.0
