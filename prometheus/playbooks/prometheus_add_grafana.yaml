@@ -1,0 +1,26 @@
+- name: Configure Prometheus to monitor grafana
+  hosts: all
+  become: true
+  tasks:
+    - name: Add grafana to /etc/hosts on prometheus server
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ SOURCE_NODE }}$'
+        line: "{{ GRAFANA_IP_ADDRESS }} {{SOURCE_NODE}}"
+        state: present
+    - name: Add grafana to scrape config
+      blockinfile:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/grafana.yml"
+        create: true
+        block: |
+          - targets:
+            - {{ SOURCE_NODE }}:{{ GRAFANA_PORT }}
+            labels:
+              deployment_id: {{ DEPLOYMENT_ID }}
+              node: {{ SOURCE_NODE }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ SOURCE_NODE }}"
+    - name: Reload prometheus
+      become: true
+      systemd:
+        name: prometheus
+        state: reloaded

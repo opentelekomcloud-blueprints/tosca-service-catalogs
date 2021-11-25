@@ -1,0 +1,34 @@
+- name: Configure Prometheus to scrape metrics from node exporters
+  hosts: all
+  become: true
+  # TARGET_INSTANCES: NodeT_1,NodeT_2
+  # NodeT_1_NODE_EXPORTER_IP_ADDRESS: "192.168.0.11"
+  vars:
+    NODE_EXPORTERS: "{{ TARGET_INSTANCES.split(',') }}"
+  tasks:
+    - name: Add new node exporters to /etc/hosts on prometheus server
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item }}$'
+        # Example: 192.168.0.11 NodeT_1
+        line: "{{ lookup('vars', item + '_NODE_EXPORTER_IP_ADDRESS') }} {{item}}"
+        state: present
+      with_items: "{{ NODE_EXPORTERS }}"
+    - name: Add new node exporters to scrape config
+      blockinfile:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/node.yml"
+        create: true
+        block: |
+          - targets:
+            - {{ item }}:{{ NODE_EXPORTER_PORT }}
+            labels:
+              deployment_id: {{ DEPLOYMENT_ID }}
+              node: {{ item }}
+              host: {{ TARGET_HOST }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+      loop: "{{ NODE_EXPORTERS }}"
+    - name: Reload prometheus
+      become: true
+      systemd:
+        name: prometheus
+        state: reloaded

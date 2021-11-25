@@ -1,0 +1,837 @@
+# Copyright (C) 2021 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.prometheus
+  template_version: 1.0.0
+  template_author: Tri
+
+description: Deploy Prometheus using official ansible role from https://github.com/cloudalchemy
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+data_types:
+  otc.datatypes.PrometheusGlobalConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      scrape_interval:
+        type: string
+        description: How frequently to scrape targets by default. Default to 1m.
+        default: 1m
+        required: false
+      scrape_timeout:
+        type: string
+        description: How long until a scrape request times out. Default to 10s.
+        default: 10s
+        required: false
+      evaluation_interval:
+        type: string
+        description: How frequently to evaluate rules. Default to 1m.
+        default: 1m
+        required: false
+
+  otc.datatypes.GrafanaServerConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      protocol:
+        type: string
+        constraints:
+          - valid_values: ['http', 'https', 'h2', 'socket']
+        description: http,https,h2 or socket. If the protocol is https, a selfsigned certificate is auto generated if cert_key and cert_file is not specified. Default to https.
+        default: https
+        required: false
+      enforce_domain:
+        type: boolean
+        description: Redirect to correct domain if host header does not match domain. Prevents DNS rebinding attacks. Default is false.
+        default: false
+        required: false
+      socket:
+        type: string
+        description: Path where the socket should be created when protocol=socket. Make sure that Grafana has appropriate permissions before you change this setting.
+        required: false
+      cert_key:
+        type: string
+        description: Path to the certificate key file. If not specified and protocol is set to https, a selfsigned certificate/key is auto generated.
+        default: ""
+        required: false
+      cert_file:
+        type: string
+        description: Path to the certificate file. If not specified and protocol is set to https, a selfsigned certificate/key is auto generated.
+        default: ""
+        required: false
+      enable_gzip:
+        type: boolean
+        description: >
+          Set this option to true to enable HTTP compression, this can improve transfer speed and bandwidth utilization.
+          It is recommended that most users set it to true. By default it is set to false for compatibility reasons.
+        default: false
+        required: false
+      static_root_path:
+        type: string
+        description: >
+          The path to the directory where the front end files (HTML, JS, and CSS files).
+          Defaults to public which is why the Grafana binary needs to be executed with working directory set to the installation path.
+        default: public
+        required: false
+      router_logging:
+        type: boolean
+        description: Set to true for Grafana to log all HTTP requests (not just errors). These are logged as Info level events to the Grafana log.
+        default: false
+        required: false
+      serve_from_sub_path:
+        type: boolean
+        description: Serve Grafana from subpath specified in root_url setting. By default it is set to false for compatibility reasons.
+        default: false
+        required: false
+
+  otc.datatypes.GrafanaSecurityConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      admin_user:
+        type: string
+        description: The name of the default Grafana Admin user, who has full permissions. Default is admin.
+        default: admin
+        required: true
+      admin_password:
+        type: string
+        description: The password of the default Grafana Admin. Set once on first-run. Default is admin.
+        default: admin
+        required: true
+      disable_gravatar:
+        type: boolean
+        description: Set to true to disable the use of Gravatar for user profile images. Default is false.
+        default: false
+        required: false
+      data_source_proxy_whitelist:
+        type: string
+        description: >
+          Define a whitelist of allowed IP addresses or domains, with ports, to be used in data source URLs with the Grafana data source proxy.
+          Format: ip_or_domain:port separated by spaces. PostgreSQL, MySQL, and MSSQL data sources do not use the proxy and are therefore unaffected by this setting.
+        required: false
+      disable_brute_force_login_protection:
+        type: boolean
+        description: Set to true to disable brute force login protection. Default is false.
+        default: false
+        required: false
+      cookie_secure:
+        type: boolean
+        description: Set to true if you host Grafana behind HTTPS. Default is false.
+        default: false
+        required: false
+      cookie_samesite:
+        type: string
+        description: >
+          Sets the SameSite cookie attribute and prevents the browser from sending this cookie along with cross-site requests.
+          The main goal is to mitigate the risk of cross-origin information leakage. This setting also provides some protection against
+          cross-site request forgery attacks (CSRF), read more about SameSite. Valid values are lax, strict, none, and disabled. Default is lax.
+          Using value disabled does not add any SameSite attribute to cookies.
+        constraints:
+          - valid_values: ["lax", "strict", "none", "disabled"]
+        default: lax
+        required: false
+      allow_embedding:
+        type: boolean
+        description: >
+          When false, the HTTP header X-Frame-Options: deny will be set in Grafana HTTP responses which will instruct browsers to not allow
+          rendering Grafana in a <frame>, <iframe>, <embed> or <object>. The main goal is to mitigate the risk of Clickjacking. Default is false.
+        default: false
+        required: false
+      strict_transport_security:  
+        type: boolean
+        description: >
+          Set to true if you want to enable HTTP Strict-Transport-Security (HSTS) response header. This is only sent when HTTPS is enabled in this configuration.
+          HSTS tells browsers that the site should only be accessed using HTTPS.
+        default: false
+        required: false
+      strict_transport_security_max_age_seconds:  
+        type: integer
+        description: >
+          Sets how long a browser should cache HSTS in seconds. Only applied if strict_transport_security is enabled. The default value is 86400.
+        default: 86400
+        required: false
+      strict_transport_security_preload:  
+        type: boolean
+        description: >
+          Set to true to enable HSTS preloading option. Only applied if strict_transport_security is enabled. The default value is false.
+        default: false
+        required: false
+      strict_transport_security_subdomains:  
+        type: boolean
+        description: >
+          Set to true if to enable the HSTS includeSubDomains option. Only applied if strict_transport_security is enabled. The default value is false.
+        default: false
+        required: false
+      x_content_type_options:
+        type: boolean
+        description: >
+          Set to true to enable the X-Content-Type-Options response header. The X-Content-Type-Options response HTTP header is a marker used by the server
+          to indicate that the MIME types advertised in the Content-Type headers should not be changed and be followed. The default value is false.
+        default: false
+        required: false
+      x_xss_protection:
+        type: boolean
+        description: >
+          Set to false to disable the X-XSS-Protection header, which tells browsers to stop pages from loading when they detect reflected cross-site scripting
+          (XSS) attacks. The default value is false until the next minor release, 6.3.
+        default: false
+        required: false
+      content_security_policy:
+        type: boolean
+        description: >
+          Set to true to add the Content-Security-Policy header to your requests. CSP allows to control resources that the user agent can load and helps prevent XSS attacks.
+        default: false
+        required: false
+      content_security_policy_template:
+        type: string
+        description: >
+          Set Content Security Policy template used when adding the Content-Security-Policy header to your requests. $NONCE in the template includes a random nonce.
+        required: false
+
+  otc.datatypes.Alertmanager.RootRoute:
+    derived_from: tosca.datatypes.Root
+    description: A route block defines a node in a routing tree and its children. Its optional configuration parameters are inherited from its parent node if not set.
+    properties:
+      receiver:
+        type: string
+        description: Root route must specify a default receiver.
+        default: slack
+        required: true
+      group_by:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          To aggregate by all possible labels use the special value '...' as the sole label name.
+        default:
+          - 'alertname'
+          - 'cluster'
+          - 'service'
+        required: false
+      group_wait:
+        type: string
+        description: >
+          How long to initially wait to send a notification for a group of alerts. Allows to wait for an
+          inhibiting alert to arrive or collect more initial alerts for the same group. (Usually ~0s to few minutes.)
+        default: 30s
+        required: false
+      group_interval:
+        type: string
+        description: >
+          How long to wait before sending a notification about new alerts that are added to a group of alerts
+          for which an initial notification has already been sent. (Usually ~5m or more.)
+        default: 5m
+        required: false
+      repeat_interval:
+        description: >
+          How long to wait before sending a notification again if it has already been sent successfully for an alert. (Usually ~3h or more).
+        type: string
+        default: 3h
+        required: false
+      routes:
+        type: list
+        entry_schema:
+          type: otc.datatypes.Alertmanager.Route
+        description: Zero or more child routes.
+        required: false
+
+  otc.datatypes.Alertmanager.Route:
+    derived_from: tosca.datatypes.Root
+    properties:
+      receiver:
+        type: string
+        description: Specify a receiver for this node
+        required: true
+      matchers:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          A list of matchers that an alert has to fulfill to match the node. For example: service=~"mysql|cassandra"
+        required: true
+      continue:
+        type: boolean
+        description: Whether an alert should continue matching subsequent sibling nodes.
+        default: false
+        required: false
+      group_by:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          To aggregate by all possible labels use the special value '...' as the sole label name.
+        required: false
+      group_wait:
+        type: string
+        description: >
+          How long to initially wait to send a notification for a group of alerts. Allows to wait for an
+          inhibiting alert to arrive or collect more initial alerts for the same group. (Usually ~0s to few minutes.)
+        default: 30s
+        required: false
+      group_interval:
+        type: string
+        description: >
+          How long to wait before sending a notification about new alerts that are added to a group of alerts
+          for which an initial notification has already been sent. (Usually ~5m or more.)
+        default: 5m
+        required: false
+      repeat_interval:
+        description: >
+          How long to wait before sending a notification again if it has already been sent successfully for an alert. (Usually ~3h or more).
+        type: string
+        default: 3h
+        required: false
+
+  otc.datatypes.Alertmanager.Receiver:
+    derived_from: tosca.datatypes.Root
+    properties:
+      name:
+        type: string
+        description: The unique name of the receiver. Require either a slack config or an email config for the receiver.
+        default: slack
+        required: true
+      slack_configs:
+        type: list
+        entry_schema:
+          type: otc.datatypes.Alertmanager.SlackConfig
+        description: Add one or more slack configs.
+        required: false
+      email_configs:
+        type: list
+        entry_schema:
+          type: otc.datatypes.Alertmanager.EmailConfig
+        description: Add one or more email configs.
+        required: false
+
+  otc.datatypes.Alertmanager.SlackConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      # cannot unmarshal !!str `false` into bool when validate by 'amtool check-config'
+      # send_resolved:
+      #   type: boolean
+      #   description: Whether or not to notify about resolved alerts.
+      #   default: false
+      #   required: false
+      api_url:
+        type: string
+        description: The Slack webhook URL.
+        default: 'https://hooks.slack.com/services/T00/B00/XXX'
+        required: true
+      channel:
+        type: string
+        description: The channel or user to send notifications to.
+        default: '#alerts'
+        required: true
+      text:
+        type: string
+        description: The formatted text of the message to be published.
+        required: false
+      username:
+        type: string
+        description: Set your bot's user name.
+        required: false
+      icon_url:
+        type: string
+        description: Specify a URL to an image to use as the profile photo alongside the message.
+        required: false
+      title:
+        type: string
+        description: Large title text near the top of the attachment.
+        required: false
+      title_link:
+        type: string
+        description: A valid URL that turns the title text into a hyperlink.
+        required: false
+
+  otc.datatypes.Alertmanager.EmailConfig:
+    derived_from: tosca.datatypes.Root
+    properties:
+      # send_resolved:
+      #   type: boolean
+      #   description: Whether or not to notify about resolved alerts.
+      #   default: false
+      #   required: false
+      to:
+        type: string
+        description: The email address to send notifications to.
+        required: true
+      from:
+        type: string
+        description: The sender address.
+        required: true
+      smarthost:
+        type: string
+        description: >
+          The SMTP smarthost used for sending emails, including port number.
+        default: localhost:25
+        required: true
+      hello:
+        type: string
+        description: The hostname to identify to the SMTP server.
+        default: localhost
+        required: false
+      auth_username:
+        type: string
+        description: SMTP Auth using CRAM-MD5, LOGIN and PLAIN. If empty, Alertmanager doesn't authenticate to the SMTP server.
+        required: false
+      auth_password:
+        type: string
+        description: SMTP Auth using LOGIN and PLAIN.
+        required: false
+      auth_secret:
+        type: string
+        description: SMTP Auth using CRAM-MD5.
+        required: false
+      auth_identity:
+        type: string
+        description: SMTP Auth using PLAIN.
+        required: false
+      # require_tls:
+      #   type: boolean
+      #   description: The SMTP TLS requirement.
+      #   default: true
+      #   required: false
+      # tls_config:
+      #   type: otc.datatypes.Alertmanager.TlsConfig
+      #   description: A tls_config allows configuring TLS connections.
+      #   required: false
+      text:
+        type: string
+        description: The text body of the email notification.
+        required: false
+
+  # otc.datatypes.Alertmanager.TlsConfig:
+  #   derived_from: tosca.datatypes.Root
+  #   properties:
+  #     ca_file:
+  #       type: string
+  #       description: CA certificate to validate the server certificate with.
+  #       required: false
+  #     cert_file:
+  #       type: string
+  #       description: Certificate for client cert authentication to the server.
+  #       required: false
+  #     key_file:
+  #       type: string
+  #       description: Key files for client cert authentication to the server.
+  #       required: false
+  #     server_name:
+  #       type: string
+  #       description: ServerName extension to indicate the name of the server.
+  #       required: false
+  #     insecure_skip_verify:
+  #       type: boolean
+  #       description: Disable validation of the server certificate.
+  #       default: false
+  #       required: false
+
+
+node_types:
+  otc.nodes.SoftwareComponent.Grafana:
+    derived_from: tosca.nodes.SoftwareComponent
+    tags:
+      icon: /images/grafana.png
+    attributes:
+      public_url: { concat: ["https://", get_attribute: [HOST, public_ip_address], ":", get_property: [SELF, grafana_endpoint, port] ] }
+      private_url: { concat: ["https://", get_attribute: [HOST, private_address], ":", get_property: [SELF, grafana_endpoint, port] ] }
+    properties:
+      component_version:
+        type: version
+        description: Prometheus package version. Only prometheus 2.x is supported.
+        default: 8.2.2
+        constraints:
+          - greater_or_equal: 5.1
+      logs_dir:
+        type: string
+        description: Path to logs directory. Default to '/var/log/grafana'.
+        default: /var/log/grafana
+        required: true
+      data_dir:
+        type: string
+        description: Path to database directory. Default to '/var/lib/grafana'.
+        default: /var/lib/grafana
+        required: true
+      security:
+        type: otc.datatypes.GrafanaSecurityConfig
+        description: Security configuration section as in the official document.
+        required: true
+      server:
+        type: otc.datatypes.GrafanaServerConfig
+        description: Server configuration section as in the official document.
+        required: false
+    capabilities:
+      grafana_endpoint:
+        type: otc.capabilities.Endpoint.Grafana
+    requirements:
+      - add_datasource_prometheus:
+          capability: otc.capabilities.Endpoint.Prometheus
+          relationship: otc.relationships.prometheus.GrafanaAddPrometheus
+          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        create:
+          description: Grafana installation
+          inputs:
+            GRAFANA_IP_ADDRESS: { get_attribute: [HOST, private_address] }
+            GRAFANA_VERSION: { get_property: [SELF, component_version] }
+            GRAFANA_PORT: { get_property: [SELF, grafana_endpoint, port] }
+            GRAFANA_LOGS_DIR: { get_property: [SELF, logs_dir] }
+            GRAFANA_DATA_DIR: { get_property: [SELF, data_dir] }
+            GRAFANA_SECURITY: { get_property: [SELF, security] }
+            GRAFANA_SERVER: { get_property: [SELF, server] }
+          implementation: playbooks/grafana_create.yaml
+
+  otc.nodes.SoftwareComponent.Prometheus.PrometheusServer:
+    derived_from: tosca.nodes.SoftwareComponent
+    tags:
+      icon: /images/prometheus.png
+    description: >
+      Install prometheus server.
+      Generate CA cert, key, and username/password for TLS communication with node exporters.
+    attributes:
+      private_url: { concat: ["https://", get_attribute: [HOST, private_address], ":", get_property: [SELF, prometheus_endpoint, port] ] }
+      ca_cert: { get_operation_output: [SELF, Standard, create, CA_CERT] }
+      ca_key: { get_operation_output: [SELF, Standard, create, CA_KEY] }
+      node_exporter_auth_password: { get_operation_output: [SELF, Standard, create, NODE_EXPORTER_AUTH_PASSWORD] }
+      prometheus_auth_password: { get_operation_output: [SELF, Standard, create, PROMETHEUS_AUTH_PASSWORD] }
+    properties:
+      component_version:
+        type: version
+        description: Prometheus package version. Only prometheus 2.x is supported.
+        default: 2.27.0
+        constraints:
+          - greater_or_equal: 2
+          - less_than: 3
+      config_dir:
+        type: string
+        description: Path to directory with prometheus configuration. Default to '/etc/prometheus'.
+        default: /etc/prometheus 
+      db_dir:
+        type: string
+        description: Path to directory with prometheus database. Default to '/var/lib/prometheus'.
+        default: /var/lib/prometheus
+        required: true
+      storage_retention:
+        type: string
+        description: Data retention period. Default to '30d'.
+        default: 30d
+        required: false
+      storage_retention_size:
+        type: string
+        description: Data retention period by size. Default to '0'.
+        default: "0"
+        required: false
+      global:
+        type: otc.datatypes.PrometheusGlobalConfig
+        description: Prometheus 'global' config as in the official document.
+        required: false
+    capabilities:
+      prometheus_endpoint:
+        type: otc.capabilities.Endpoint.Prometheus
+    requirements:
+      - scrape_metrics_from_node_exporters:
+          capability: otc.capabilities.Endpoint.NodeExporter
+          relationship: otc.relationships.prometheus.ScrapeMetricsFromNodeExporter
+          occurrences: [0, UNBOUNDED]
+      - add_alert_managers:
+          capability: otc.capabilities.Endpoint.AlertManager
+          relationship: otc.relationships.prometheus.AddAlertManager
+          occurrences: [0, UNBOUNDED]
+    interfaces:
+      Standard:
+        create:
+          description: Install prometheus server and generate credentials for node exporter.
+          inputs:
+            PROMETHEUS_IP_ADDRESS: { get_attribute: [HOST, private_address] }
+            PROMETHEUS_VERSION: { get_property: [SELF, component_version] }
+            PROMETHEUS_PORT: { get_property: [SELF, prometheus_endpoint, port] }
+            PROMETHEUS_METRICS_PATH: { get_property: [SELF, prometheus_endpoint, url_path] }
+            PROMETHEUS_CONFIG_DIR: { get_property: [SELF, config_dir] }
+            PROMETHEUS_DB_DIR: { get_property: [SELF, db_dir] }
+            PROMETHEUS_STORAGE_RETENTION: { get_property: [SELF, storage_retention] }
+            PROMETHEUS_STORAGE_RETENTION_SIZE: { get_property: [SELF, storage_retention_size] }
+            PROMETHEUS_GLOBAL: { get_property: [SELF, global] }
+          implementation: playbooks/prometheus_create.yaml
+
+  otc.nodes.SoftwareComponent.Prometheus.NodeExporter:
+    derived_from: tosca.nodes.SoftwareComponent
+    tags:
+      icon: /images/node-exporter.png
+    description: Use this node to install a node exporter on a compute node.
+    attributes:
+      private_url: { concat: ["https://", get_attribute: [HOST, private_address], ":", get_property: [SELF, scrape_endpoint, port] ] }
+    properties:
+      component_version:
+        type: version
+        description: Node exporter package version.
+        default: 1.1.2
+      textfile_dir:
+        type: string
+        description: Specify the directory used by the Textfile Collector.
+        default: /var/lib/node_exporter
+        required: true
+      enabled_collectors:
+        description: >
+          Add additional enabled collectors to those enabled by default. See also https://github.com/prometheus/node_exporter#disabled-by-default
+        type: list
+        required: false
+        default: []
+        entry_schema:
+          type: string
+          constraints:
+            - valid_values: ["buddyinfo", "devstat", "drbd", "ethtool", "interrupts", "ksmd", "logind", "meminfo_numa", "mountstats", "network_route", "ntp", "perf", "processes", "qdisc", "runit", "supervisord", "systemd", "tcpstat", "wifi", "zoneinfo"]
+      disabled_collectors:
+        description: >
+          Add collectors you want to disable. By default node_exporter enable collectors https://github.com/prometheus/node_exporter#enabled-by-default
+        type: list
+        required: false
+        default: []
+        entry_schema:
+          type: string
+          constraints:
+            - valid_values:
+              - arp
+              - bcache
+              - bonding
+              - btrfs
+              - boottime
+              - conntrack
+              - cpu
+              - cpufreq
+              - diskstats
+              - edac
+              - entropy
+              - exec
+              - fibrechannel
+              - filefd
+              - filesystem
+              - hwmon
+              - infiniband
+              - ipvs
+              - lnstat
+              - loadavg
+              - mdadm
+              - meminfo
+              - netclass
+              - netdev
+              - netstat
+              - nfs
+              - nfsd
+              - nvme
+              - os
+              - powersupplyclass
+              - pressure
+              - rapl
+              - schedstat
+              - sockstat
+              - softnet
+              - stat
+              - tapestats
+              - textfile
+              - thermal_zone
+              - time
+              - timex
+              - udp_queues
+              - uname
+              - vmstat
+              - xfs
+              - zfs
+    capabilities:
+      scrape_endpoint:
+        type: otc.capabilities.Endpoint.NodeExporter
+        # one node exporter at least and at most allows one relationship from the prometheus server
+        occurrences: [1, 1]
+
+  otc.nodes.SoftwareComponent.Prometheus.AlertManager:
+    derived_from: tosca.nodes.SoftwareComponent
+    tags:
+      icon: /images/alert.png
+    description: Use this node to configure the alert manager.
+    attributes:
+      private_url: { concat: ["http://", get_attribute: [HOST, private_address], ":", get_property: [SELF, alertmanager_endpoint, port] ] }
+    properties:
+      component_version:
+        type: version
+        description: Node exporter package version.
+        default: 0.21.0
+      config_dir:
+        type: string
+        description: Path to directory with alertmanager configuration. Default to /etc/alertmanager
+        default: /etc/alertmanager
+        required: true
+      db_dir:
+        type: string
+        description: Path to directory with alertmanager database. Default to /var/lib/alertmanager
+        default: /var/lib/alertmanager
+        required: true  
+      route:
+        type: otc.datatypes.Alertmanager.RootRoute
+        description: Alert routing.
+        required: true
+      receivers:
+        type: list
+        entry_schema:
+          type: otc.datatypes.Alertmanager.Receiver
+        default:
+          - name: slack
+        required: true
+      resolve_timeout:
+        type: string
+        description: Time after which an alert is declared resolved.
+        default: 3m
+        required: false
+      http_config:
+        type: map
+        description: Http config for using custom webhooks as in https://prometheus.io/docs/alerting/latest/configuration/#http_config
+        required: false
+        entry_schema:
+          type: string
+    capabilities:
+      alertmanager_endpoint:
+        type: otc.capabilities.Endpoint.AlertManager
+        occurrences: [1, 1]
+    interfaces:
+      Standard:
+        create:
+          description: Create alertmanager
+          inputs:
+            IP_ADDRESS: { get_attribute: [HOST, private_address] }
+            VERSION: { get_property: [SELF, component_version] }
+            PORT: { get_property: [SELF, alertmanager_endpoint, port] }
+            CONFIG_DIR: { get_property: [SELF, config_dir] }
+            DB_DIR: { get_property: [SELF, db_dir] }
+            RESOLVE_TIMEOUT: { get_property: [SELF, resolve_timeout] }
+            RECEIVERS: { get_property: [SELF, receivers] }
+            HTTP_CONFIG: { get_property: [SELF, http_config] }
+            ROUTE: { get_property: [SELF, route] }
+          implementation: playbooks/alert_manager_create.yaml
+
+
+relationship_types:
+  otc.relationships.prometheus.ScrapeMetricsFromNodeExporter:
+    derived_from: tosca.relationships.ConnectsTo
+    properties:
+      credential:
+        type: tosca.datatypes.Credential
+        default:
+          protocol: https
+          token_type: "basic_auth"
+          user: prometheus
+          token: "AUTO_GENERATED"
+    interfaces:
+      Configure:
+        add_source:
+          description: Install node exporter and config with cert, key, and basic authentication generated by the prometheus server.
+          inputs:
+            NODE_EXPORTER_VERSION: { get_property: [TARGET, component_version] }
+            NODE_EXPORTER_IP_ADDRESS: { get_attribute: [TARGET, private_address] }
+            NODE_EXPORTER_PORT: { get_property: [TARGET, scrape_endpoint, port] }
+            NODE_EXPORTER_WEB_TELEMETRY_PATH: { get_property: [TARGET, scrape_endpoint, url_path] }
+            NODE_EXPORTER_TEXTFILE_DIR: { get_property: [TARGET, textfile_dir] }
+            NODE_EXPORTER_ENABLED_COLLECTORS: { get_property: [TARGET, enabled_collectors] }
+            NODE_EXPORTER_DISABLED_COLLECTORS: { get_property: [TARGET, disabled_collectors] }
+            CA_CERT: { get_attribute: [SOURCE, ca_cert] }
+            CA_KEY: { get_attribute: [SOURCE, ca_key] }
+            NODE_EXPORTER_AUTH_PASSWORD: { get_attribute: [SOURCE, node_exporter_auth_password] }
+          implementation: playbooks/node_exporter_create.yaml
+        add_target:
+          description: Add a node exporter to the prometheus server config when it is up and running
+          inputs:
+            NODE_EXPORTER_IP_ADDRESS: { get_attribute: [TARGET, private_address] }
+            NODE_EXPORTER_PORT: { get_property: [TARGET, scrape_endpoint, port] }
+            PROMETHEUS_CONFIG_DIR: { get_property: [SOURCE, config_dir] }
+          implementation: playbooks/prometheus_add_node_exporter.yaml
+        remove_target:
+          description: Remove a node exporter from the prometheus server config when it is deleted
+          inputs:
+            NODE_EXPORTER_IP_ADDRESS: { get_attribute: [TARGET, private_address] }
+            NODE_EXPORTER_PORT: { get_property: [TARGET, scrape_endpoint, port] }
+            PROMETHEUS_CONFIG_DIR: { get_property: [SOURCE, config_dir] }
+          implementation: playbooks/prometheus_remove_node_exporter.yaml
+
+  otc.relationships.prometheus.GrafanaAddPrometheus:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        add_target:
+          description: When prometheus is up, grafana adds prometheus endpoint to its datasource config
+          inputs:
+            PROMETHEUS_IP_ADDRESS: { get_attribute: [TARGET, private_address] }
+            PROMETHEUS_AUTH_PASSWORD: { get_attribute: [TARGET, prometheus_auth_password] }
+            PROMETHEUS_PORT: { get_property: [TARGET, prometheus_endpoint, port] }
+            # keep configs from the create interface of Grafana
+            GRAFANA_IP_ADDRESS: { get_attribute: [SOURCE, private_address] }
+            GRAFANA_VERSION: { get_property: [SOURCE, component_version] }
+            GRAFANA_PORT: { get_property: [SOURCE, grafana_endpoint, port] }
+            GRAFANA_LOGS_DIR: { get_property: [SOURCE, logs_dir] }
+            GRAFANA_DATA_DIR: { get_property: [SOURCE, data_dir] }
+            GRAFANA_SECURITY: { get_property: [SOURCE, security] }
+          implementation: playbooks/grafana_add_prometheus.yaml
+        add_source:
+          description: When grafana is up, prometheus adds grafana endpoint to its file_sd config to monitor
+          inputs:
+            GRAFANA_IP_ADDRESS: { get_attribute: [SOURCE, private_address] }
+            GRAFANA_PORT: { get_property: [SOURCE, grafana_endpoint, port] }
+            PROMETHEUS_CONFIG_DIR: { get_property: [TARGET, config_dir] }
+          implementation: playbooks/prometheus_add_grafana.yaml
+
+  otc.relationships.prometheus.AddAlertManager:
+    derived_from: tosca.relationships.ConnectsTo
+    description: Add alert manager to prometheus server
+    interfaces:
+      Configure:
+        add_target:
+          inputs:
+            ALERT_IP_ADDRESS: { get_attribute: [TARGET, private_address] }
+            ALERT_PORT: { get_property: [TARGET, alertmanager_endpoint, port] }
+            PROMETHEUS_CONFIG_DIR: { get_property: [SOURCE, config_dir] }
+          implementation: playbooks/prometheus_add_alert_manager.yaml
+
+capability_types:
+  otc.capabilities.Endpoint.NodeExporter:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 9100
+      secure:
+        type: boolean
+        default: true
+      url_path:
+        type: string
+        default: "/metrics"
+
+  otc.capabilities.Endpoint.AlertManager:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 9093
+      secure:
+        type: boolean
+        default: false
+
+  otc.capabilities.Endpoint.Prometheus:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 9090
+      secure:
+        type: boolean
+        default: true
+      url_path:
+        type: string
+        default: "/metrics"
+
+  otc.capabilities.Endpoint.Grafana:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 3000
+      secure:
+        type: boolean
+        default: true

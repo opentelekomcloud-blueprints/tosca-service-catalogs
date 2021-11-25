@@ -1,0 +1,40 @@
+- name: Add datasource prometheus to grafana
+  hosts: all
+  strategy: free
+  become: true
+  tasks:
+    - name: Define data source prometheus
+      set_fact:
+        grafana_datasources:
+          - name: "Prometheus"
+            type: "prometheus"
+            access: "proxy"
+            url: "https://{{ PROMETHEUS_IP_ADDRESS }}:{{ PROMETHEUS_PORT }}"
+            isDefault: true
+            basicAuth: true
+            basicAuthUser: prometheus
+            basicAuthPassword: "{{ PROMETHEUS_AUTH_PASSWORD }}"
+            isDefault: true
+            jsonData:
+              tlsAuth: false
+              tlsAuthWithCACert: false
+              tlsSkipVerify: true
+
+    - name: Create/Update datasources file (provisioning)
+      copy:
+        dest: "/etc/grafana/provisioning/datasources/ansible.yml"
+        content: |
+          apiVersion: 1
+          deleteDatasources: []
+          datasources:
+          {{ grafana_datasources | to_nice_yaml }}
+        backup: false
+        owner: root
+        group: grafana
+        mode: 0640
+
+    - name: restart grafana
+      become: true
+      service:
+        name: grafana-server
+        state: restarted

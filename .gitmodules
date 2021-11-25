@@ -4,3 +4,15 @@
 [submodule "mongodb/playbooks/roles/undergreen.ansible-role-mongodb"]
 	path = mongodb/playbooks/roles/undergreen.ansible-role-mongodb
 	url = https://github.com/UnderGreen/ansible-role-mongodb.git
+[submodule "prometheus/playbooks/roles/cloudalchemy.prometheus"]
+	path = prometheus/playbooks/roles/cloudalchemy.prometheus
+	url = https://github.com/cloudalchemy/ansible-prometheus.git
+[submodule "prometheus/playbooks/roles/cloudalchemy.node_exporter"]
+	path = prometheus/playbooks/roles/cloudalchemy.node_exporter
+	url = https://github.com/cloudalchemy/ansible-node-exporter.git
+[submodule "prometheus/playbooks/roles/cloudalchemy.alertmanager"]
+	path = prometheus/playbooks/roles/cloudalchemy.alertmanager
+	url = https://github.com/cloudalchemy/ansible-alertmanager.git
+[submodule "prometheus/playbooks/roles/cloudalchemy.grafana"]
+	path = prometheus/playbooks/roles/cloudalchemy.grafana
+	url = https://github.com/cloudalchemy/ansible-grafana.git

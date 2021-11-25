@@ -1,0 +1,61 @@
+- name: Install Grafana
+  hosts: all
+  strategy: free
+  become: true
+  tasks:
+    - name: Get grafana_server dict
+      set_fact:
+        grafana_server: "{{ GRAFANA_SERVER }}"
+    - name: Auto generate selfsigned certificate for grafana when protocol is https and cert_key is not specified.
+      block:
+        - name: Create the grafana group
+          group:
+            name: grafana
+            state: present
+            system: true
+        - name: Create grafana cert dir
+          file:
+            path: "/etc/grafana"
+            state: directory
+            owner: root
+            group: grafana
+            mode: 0640
+        - name: create private key for grafana
+          openssl_privatekey:
+            path: /etc/grafana/tls.key
+          # no_log: true
+        - name: create csr for grafana
+          openssl_csr:
+            path: /etc/grafana/tls.csr
+            privatekey_path: /etc/grafana/tls.key
+            country_name: DE
+            organization_name: T-Systems International GmbH
+            common_name: "{{ GRAFANA_IP_ADDRESS }}"
+        - name: Create cert and key
+          openssl_certificate:
+            path: /etc/grafana/tls.cert
+            csr_path: /etc/grafana/tls.csr
+            privatekey_path: /etc/grafana/tls.key
+            provider: selfsigned
+        - name: update grafana_server with auto generated certificate
+          set_fact:
+            grafana_server: "{{ grafana_server | combine(new_item, recursive=true) }}"
+          vars:
+            new_item:
+              cert_key: "/etc/grafana/tls.key"
+              cert_file: "/etc/grafana/tls.cert"
+          with_dict: "{{ grafana_server }}"
+      when:
+        - grafana_server.protocol is defined and grafana_server.protocol == 'https'
+        - (grafana_server.cert_key is defined and grafana_server.cert_key == '') or (grafana_server.cert_file is defined and grafana_server.cert_file == '')
+
+    - name: Install grafana using role cloudalchemy.grafana
+      import_role:
+        name: cloudalchemy.grafana
+      vars:
+        grafana_version: "{{ GRAFANA_VERSION }}"
+        grafana_logs_dir: "{{ GRAFANA_LOGS_DIR }}"
+        grafana_data_dir: "{{ GRAFANA_DATA_DIR }}"
+        grafana_address: "{{ GRAFANA_IP_ADDRESS }}"
+        grafana_port: "{{ GRAFANA_PORT }}"
+        grafana_security: "{{ GRAFANA_SECURITY }}"

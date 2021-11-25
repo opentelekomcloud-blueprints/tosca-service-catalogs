@@ -1,0 +1,32 @@
+- name: Configure Prometheus to scrape metrics from node exporters
+  hosts: all
+  become: true
+  ignore_errors: true
+  vars:
+    NODE_EXPORTERS: "{{ TARGET_INSTANCES.split(',') }}"
+  tasks:
+    - name: Remove node exporters from /etc/hosts
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item }}$'
+        line: "{{ lookup('vars', item + '_NODE_EXPORTER_IP_ADDRESS') }} {{item}}"
+        state: absent
+      with_items: "{{ NODE_EXPORTERS }}"
+    - name: Remove node exporters from scrape config
+      blockinfile:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/node.yml"
+        block: |
+          - targets:
+            - {{ item }}:{{ NODE_EXPORTER_PORT }}
+            labels:
+              deployment_id: {{ DEPLOYMENT_ID }}
+              node: {{ item }}
+              host: {{ SOURCE_HOST }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+        state: absent
+      loop: "{{ NODE_EXPORTERS }}"
+    - name: Reload prometheus
+      become: true
+      systemd:
+        name: prometheus
+        state: reloaded
