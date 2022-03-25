@@ -1,0 +1,152 @@
+- name: Create a selfsigned CA cert and key
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: create ca private key
+      openssl_privatekey:
+        path: /tmp/ca.key
+      no_log: true
+    - name: create ca csr
+      openssl_csr:
+        path: /tmp/ca.csr
+        privatekey_path: /tmp/ca.key
+        country_name: DE
+        organization_name: T-Systems International GmbH
+        common_name: "Prometheus cluster"
+        basic_constraints: 'CA:TRUE'
+      no_log: true
+    - name: Create ca selfsigned cert
+      openssl_certificate:
+        path: /tmp/ca.cert
+        csr_path: /tmp/ca.csr
+        privatekey_path: /tmp/ca.key
+        provider: selfsigned
+      no_log: true
+
+- name: Install Prometheus
+  hosts: all
+  strategy: free
+  tasks:
+    - name: Add the prometheus server to /etc/hosts
+      become: true
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {{ PROMETHEUS_IP_ADDRESS }} {{ NODE }}
+    - name: Auto generate password for prometheus server to authenticate to node exporter
+      set_fact:
+        NODE_EXPORTER_AUTH_PASSWORD: "{{ lookup('password', '/dev/null chars=ascii_letters length=16') }}"
+        PROMETHEUS_AUTH_PASSWORD: "{{ lookup('password', '/dev/null chars=ascii_letters length=16') }}"
+      no_log: true
+    - name: Define prometheus configs
+      set_fact:
+        prometheus_scrape_configs:
+          # Scrape metrics from the prometheus server iteself
+          - job_name: "prometheus"
+            metrics_path: "{{ PROMETHEUS_METRICS_PATH }}"
+            scheme: https
+            basic_auth:
+              username: prometheus
+              password: "{{ PROMETHEUS_AUTH_PASSWORD }}"
+            tls_config:
+              ca_file: "{{ PROMETHEUS_CONFIG_DIR }}/ca.cert"
+            static_configs:
+              - targets:
+                - "{{ NODE }}:{{ PROMETHEUS_PORT }}"
+          # Config to scrape metrics from node exporters
+          # Protect node exporter using transport SSL and basic authentication.
+          - job_name: "node"
+            scheme: https
+            basic_auth:
+              username: prometheus
+              password: "{{ NODE_EXPORTER_AUTH_PASSWORD }}"
+            tls_config:
+              ca_file: "{{ PROMETHEUS_CONFIG_DIR }}/ca.cert"
+            # A node exporter will be added later to node.yml when it is up by prometheus_add_node_exporter.yaml.
+            file_sd_configs:
+              - files:
+                - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/node.yml"
+          # Config prometheus to monitor alertmanager
+          - job_name: "alertmanager"
+            file_sd_configs:
+              - files:
+                - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/alertmanager.yml"
+          # Config prometheus to monitor grafana
+          # Grafana will be added later to alertmanager.yml when grafana is up by prometheus_add_grafana.yaml.
+          - job_name: "grafana"
+            scheme: https
+            tls_config:
+              insecure_skip_verify: true
+            file_sd_configs:
+              - files:
+                - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/grafana.yml"
+        # Define TLS and auth to protect prometheus server endpoint
+        prometheus_web_config:
+          tls_server_config:
+            cert_file: "{{ PROMETHEUS_CONFIG_DIR }}/tls.cert"
+            key_file: "{{ PROMETHEUS_CONFIG_DIR }}/tls.key"
+          basic_auth_users:
+            prometheus: "{{ PROMETHEUS_AUTH_PASSWORD | password_hash('bcrypt', ('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890' | shuffle(seed=inventory_hostname) | join)[:22], rounds=9) }}"
+    - name: Install Prometheus using role cloudalchemy.prometheus
+      become: true
+      import_role:
+        name: cloudalchemy.prometheus
+      vars:
+        prometheus_version: "{{ PROMETHEUS_VERSION }}"
+        prometheus_web_listen_address: "{{ PROMETHEUS_IP_ADDRESS }}:{{ PROMETHEUS_PORT }}"
+        prometheus_config_dir: "{{ PROMETHEUS_CONFIG_DIR }}"
+        prometheus_db_dir: "{{ PROMETHEUS_DB_DIR }}"
+        prometheus_storage_retention: "{{ PROMETHEUS_STORAGE_RETENTION }}"
+        prometheus_storage_retention_size: "{{ PROMETHEUS_STORAGE_RETENTION_SIZE }}"
+        prometheus_global: "{{ PROMETHEUS_GLOBAL }}"
+    - name: copy ca cert to prometheus config dir
+      become: true
+      copy:
+        src: /tmp/ca.cert
+        dest: "{{ PROMETHEUS_CONFIG_DIR }}/ca.cert"
+        owner: root
+        group: prometheus
+        mode: 0640
+      no_log: true
+    - name: copy ca key to prometheus config dir
+      become: true
+      copy:
+        src: /tmp/ca.key
+        dest: "{{ PROMETHEUS_CONFIG_DIR }}/ca.key"
+        owner: root
+        group: root
+        mode: 0600
+      no_log: true
+    - name: create private key for prometheus server
+      become: true
+      openssl_privatekey:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/tls.key"
+        owner: root
+        group: prometheus
+        mode: 0640
+      no_log: true
+    - name: create csr for prometheus server
+      become: true
+      openssl_csr:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/tls.csr"
+        privatekey_path: "{{ PROMETHEUS_CONFIG_DIR }}/tls.key"
+        country_name: DE
+        organization_name: T-Systems International GmbH
+        common_name: "{{ NODE }}"
+    - name: create certificate for prometheus server
+      become: true
+      openssl_certificate:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/tls.cert"
+        csr_path: "{{ PROMETHEUS_CONFIG_DIR }}/tls.csr"
+        ownca_path: "{{ PROMETHEUS_CONFIG_DIR }}/ca.cert"
+        ownca_privatekey_path: "{{ PROMETHEUS_CONFIG_DIR }}/ca.key"
+        provider: ownca
+        owner: root
+        group: prometheus
+        mode: 0640
+      no_log: true
+    - name: TOSCA output ca key and cert
+      set_fact:
+        CA_CERT: "{{ lookup('file', '/tmp/ca.cert') | b64encode }}"
+        CA_KEY: "{{ lookup('file', '/tmp/ca.key') | b64encode }}"
+      no_log: true

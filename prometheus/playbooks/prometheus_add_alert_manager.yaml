@@ -1,0 +1,47 @@
+- name: Add alert manager to prometheus configs
+  hosts: all
+  become: true
+  # TARGET_INSTANCES: NodeT_1,NodeT_2
+  # NodeT_1_ALERT_IP_ADDRESS: "192.168.0.11"
+  vars:
+    ALERT_INSTANCES: "{{ TARGET_INSTANCES.split(',') }}"
+  tasks:
+    - name: Add alert manager to /etc/hosts on prometheus server
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item }}$'
+        # Example: 192.168.0.11 NodeT_1
+        line: "{{ lookup('vars', item + '_ALERT_IP_ADDRESS') }} {{item}}"
+        state: present
+      with_items: "{{ ALERT_INSTANCES }}"
+    - name: Create alertmanager.yml for prometheus to monitor alert manager
+      blockinfile:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/alertmanager.yml"
+        create: true
+        block: |
+          - targets:
+            - {{ item }}:{{ ALERT_PORT }}
+            labels:
+              deployment_id: {{ DEPLOYMENT_ID }}
+              node: {{ item }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+      loop: "{{ ALERT_INSTANCES }}"
+    - name: Define alerting configs
+      set_fact:
+        alerting_configs:
+          alerting:
+            alertmanagers:
+            - scheme: http
+              static_configs:
+                - targets: "{{ ALERT_INSTANCES | product([':'+ALERT_PORT]) | map('join') | list }}"
+    - name: Add alerting configs to prometheus.yml
+      blockinfile:
+        path: "{{ PROMETHEUS_CONFIG_DIR }}/prometheus.yml"
+        block: "{{ alerting_configs | to_nice_yaml(indent=2) }}"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK alertmanagers"
+        state: present
+    - name: Reload prometheus
+      become: true
+      systemd:
+        name: prometheus
+        state: reloaded

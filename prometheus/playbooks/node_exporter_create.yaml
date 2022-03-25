@@ -1,0 +1,68 @@
+- name: Install node exporter
+  hosts: all
+  become: true
+  tasks:
+    - name: Create the node_exporter group
+      group:
+        name: node-exp
+        state: present
+        system: true
+    - name: Create node_exporter cert dir
+      file:
+        path: "/etc/node_exporter"
+        state: directory
+        owner: root
+        group: node-exp
+    - name: Copy ca cert
+      copy:
+        dest: /etc/node_exporter/ca.cert
+        content: "{{ CA_CERT | b64decode }}"
+      no_log: true
+    - name: Copy ca key
+      copy:
+        dest: /etc/node_exporter/ca.key
+        content: "{{ CA_KEY | b64decode }}"
+        mode: 0600
+      no_log: true
+    - name: create private key for node exporter
+      openssl_privatekey:
+        path: /etc/node_exporter/tls.key
+        group: node-exp
+        mode: 0640
+      no_log: true
+    - name: create csr for node exporter
+      openssl_csr:
+        path: /etc/node_exporter/tls.csr
+        privatekey_path: /etc/node_exporter/tls.key
+        country_name: DE
+        organization_name: T-Systems International GmbH
+        common_name: "{{ TARGET_INSTANCE }}"
+    - name: create certificate for node exporter
+      openssl_certificate:
+        path: /etc/node_exporter/tls.cert
+        csr_path: /etc/node_exporter/tls.csr
+        ownca_path: /etc/node_exporter/ca.cert
+        ownca_privatekey_path: /etc/node_exporter/ca.key
+        provider: ownca
+        group: node-exp
+        mode: 0640
+      no_log: true
+    - name: remove ca key
+      file:
+        path: /etc/node_exporter/ca.key
+        state: absent
+    - name: Config node exporter using role cloudalchemy.node_exporter
+      import_role:
+        name: cloudalchemy.node_exporter
+      vars:
+        node_exporter_version: "{{ NODE_EXPORTER_VERSION }}"
+        node_exporter_web_listen_address: "{{ NODE_EXPORTER_IP_ADDRESS }}:{{ NODE_EXPORTER_PORT }}"
+        node_exporter_web_telemetry_path: "{{ NODE_EXPORTER_WEB_TELEMETRY_PATH }}"
+        node_exporter_textfile_dir: "{{ NODE_EXPORTER_TEXTFILE_DIR }}"
+        node_exporter_enabled_collectors: "{{ NODE_EXPORTER_ENABLED_COLLECTORS }}"
+        node_exporter_disabled_collectors: "{{ NODE_EXPORTER_DISABLED_COLLECTORS }}"
+        node_exporter_tls_server_config:
+          cert_file: /etc/node_exporter/tls.cert
+          key_file: /etc/node_exporter/tls.key
+        node_exporter_basic_auth_users:
+          prometheus: "{{ NODE_EXPORTER_AUTH_PASSWORD }}"
