@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.paas.scripts
-  template_version: 1.0.1
+  template_version: 1.1.0
   template_author: Tri
 
 description: >
@@ -64,20 +64,24 @@ node_types:
             PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
           implementation: scripts/stop.sh
     artifacts:
-      - configure:
+      - upload:
           type: tosca.artifacts.File
+          description: Specify a file or a folder to upload to the hosted compute node.
+          file: examples
+      - configure:
+          type: tosca.artifacts.Implementation.Bash
           description: Specify a bash script to execute when this node is configured.
           file: examples/configure.sh
       - post_configure_source:
-          type: tosca.artifacts.File
-          description: Specify a bash script to configure the source node to connect to a target node.
+          type: tosca.artifacts.Implementation.Bash
+          description: Specify a bash script to configure this node to connect to a target node.
           file: examples/post_configure_source.sh
       - add_source:
-          type: tosca.artifacts.File
-          description: Specify a bash script to notify the target node that a source node is now available via a relationship.
+          type: tosca.artifacts.Implementation.Bash
+          description: Specify a bash script to notify a target node that this node is now available.
           file: examples/add_source.sh
       - stop:
-          type: tosca.artifacts.File
+          type: tosca.artifacts.Implementation.Bash
           description: Specify a bash script to execute when this node stops.
           file: examples/stop.sh
 
