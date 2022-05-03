@@ -16,3 +16,6 @@
 [submodule "prometheus/playbooks/roles/cloudalchemy.grafana"]
 	path = prometheus/playbooks/roles/cloudalchemy.grafana
 	url = https://github.com/cloudalchemy/ansible-grafana.git
+[submodule "wordpress/playbooks/roles"]
+	path = wordpress/playbooks/roles
+	url = https://github.com/opentelekomcloud-blueprints/ansible-wordpress.git
