@@ -1,0 +1,111 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.wordpress
+  template_version: 1.0.0
+  template_author: Tri
+
+description: Install wordpress on Ubuntu LAMP stack
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+node_types:
+  otc.nodes.SoftwareComponent.Wordpress:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: LAMP stack installation of WordPress, OpenLiteSpeed, MySQL, PHP on Ubuntu.
+    tags:
+      icon: /images/logo.png
+    attributes:
+      public_url: { concat: ["https://", get_attribute: [HOST, public_ip_address], ":", get_property: [SELF, endpoint, port] ] }
+      private_url: { concat: ["https://", get_attribute: [HOST, private_address], ":", get_property: [SELF, endpoint, port] ] }
+    properties:
+      component_version:
+        type: version
+        description: Set the Wordpress version (e.g., 5.9.3). If not specified, latest will be used.
+        required: false
+      php_memory_limit:
+        type: string
+        description: Set maximum amount of memory in bytes that a script is allowed to allocate.
+        default: '128'
+      php_upload_max_filesize:
+        type: string
+        description: Set max size of an uploaded file.
+        default: '128M'
+      php_post_max_size:
+        type: string
+        description: Set max size of post data allowed.
+        default: '128M'
+      mysql_db:
+        type: string
+        description: Set MySQL root password. The password is auto-generated if not specified.
+        default: 'wordpress'
+      mysql_root_password:
+        type: string
+        description: Set MySQL root password. The password is auto-generated if not specified.
+        required: false
+      mysql_user:
+        type: string
+        description: Set MySQL user for wordpress.
+        default: 'wordpress'
+      mysql_password:
+        type: string
+        description: Set MySQL password for wordpress. The password is auto-generated if not specified.
+        required: false
+      ssl_key:
+        type: string
+        description: Specifies the port number to connect on the remote host.
+        default: '/usr/local/lsws/admin/conf/webadmin.key'
+      ssl_crt:
+        type: string
+        description: Specifies the port number to connect on the remote host.
+        default: '/usr/local/lsws/admin/conf/webadmin.crt'
+    capabilities:
+      endpoint:
+        type: otc.capabilities.Endpoint.Wordpress
+    requirements:
+      - host:
+          capability: tosca.capabilities.Compute
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1,1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ ubuntu ] }
+    interfaces:
+      Standard:
+        create:
+          description: Install WordPress, OpenLiteSpeed, MySQL, PHP.
+          inputs:
+            WORDPRESS_VERSION: { get_property: [SELF, component_version] }
+            PHP_MEMORY_LIMIT: { get_property: [SELF, php_memory_limit] }
+            PHP_UPLOAD_MAX_FILESIZE: { get_property: [SELF, php_upload_max_filesize] }
+            PHP_POST_MAX_SIZE: { get_property: [SELF, php_post_max_size] }
+            MYSQL_ROOT_PASSWORD: { get_property: [SELF, mysql_root_password] }
+            MYSQL_DB: { get_property: [SELF, mysql_db] }
+            MYSQL_USER: { get_property: [SELF, mysql_user] }
+            MYSQL_PASSWORD: { get_property: [SELF, mysql_password] }
+            # HTTP_HOST: { get_property: [SELF, http_host] }
+            # HTTP_PORT: { get_property: [SELF, http_port] }
+            HTTPS_PORT: { get_property: [SELF, endpoint, port] }
+            SSL_KEY: { get_property: [SELF, ssl_key] }
+            SSL_CRT: { get_property: [SELF, ssl_crt] }
+          implementation: playbooks/wordpress-install.yaml
+
+capability_types:
+  otc.capabilities.Endpoint.Wordpress:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 443
+      secure:
+        type: boolean
+        default: true
