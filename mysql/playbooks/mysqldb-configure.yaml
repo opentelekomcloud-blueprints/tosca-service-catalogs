@@ -1,0 +1,23 @@
+- name: Create MySQL database and user
+  hosts: all
+  strategy: free
+  # become: true
+  # become_method: sudo
+  tasks:
+    - name: Create MySQL database
+      mysql_db:
+        name: "{{ MYSQL_DB }}"
+        collation: "{{ MYSQL_COLLATION }}"
+        encoding: "{{ MYSQL_ENCODING }}"
+        login_user: root
+        login_password: "{{ MYSQL_ROOT_PASSWORD }}"
+        state: present
+    - name: Create MySQL user
+      mysql_user:
+        name: "{{ MYSQL_USER }}"
+        password: "{{ MYSQL_PASSWORD }}"
+        host: '%'
+        priv: "{{ MYSQL_DB }}.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ MYSQL_ROOT_PASSWORD }}"

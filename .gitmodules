@@ -19,3 +19,6 @@
 [submodule "wordpress/playbooks/roles"]
 	path = wordpress/playbooks/roles
 	url = https://github.com/opentelekomcloud-blueprints/ansible-wordpress.git
+[submodule "mysql/playbooks/roles/geerlingguy.ansible-role-mysql"]
+	path = mysql/playbooks/roles/geerlingguy.ansible-role-mysql
+	url = https://github.com/geerlingguy/ansible-role-mysql.git

@@ -1,5 +1,9 @@
 # Changelog
 
+## 10.05.2022
+
+* Add `MySQL` server and database.
+
 ## 03.05.2022
 
 * Add `Wordpress`.
