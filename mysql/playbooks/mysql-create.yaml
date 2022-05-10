@@ -1,0 +1,47 @@
+- name: Install MySQL
+  hosts: all
+  strategy: free
+  tasks:
+    - name: Auto generate MySQL root password if not specified.
+      set_fact:
+        MYSQL_ROOT_PASSWORD: "{{ lookup('password', '/dev/null chars=ascii_letters length=16') }}"
+      no_log: true
+      when:
+        - MYSQL_ROOT_PASSWORD is defined and MYSQL_ROOT_PASSWORD == ''
+    - name: Set data dir to use Block Storage file system.
+      set_fact:
+        mysql_datadir: "{{ MYSQL_DATADIR }}"
+      when:
+        - MYSQL_DATADIR is defined and MYSQL_DATADIR != ''
+    - name: Install mysql
+      become: true
+      import_role:
+        name: geerlingguy.ansible-role-mysql
+      vars:
+        mysql_bind_address: "{{ MYSQL_BIND_ADDRESS }}"
+        mysql_port: "{{ MYSQL_PORT }}"
+        mysql_root_password: "{{ MYSQL_ROOT_PASSWORD }}"
+        mysql_key_buffer_size: "{{ MYSQL_KEY_BUFFER_SIZE }}"
+        mysql_max_allowed_packet: "{{ MYSQL_MAX_ALLOWED_PACKET }}"
+        mysql_table_open_cache: "{{ MYSQL_TABLE_OPEN_CACHE }}"
+        mysql_sort_buffer_size: "{{ MYSQL_SORT_BUFFER_SIZE }}"
+        mysql_read_buffer_size: "{{ MYSQL_READ_BUFFER_SIZE }}"
+        mysql_read_rnd_buffer_size: "{{ MYSQL_READ_RND_BUFFER_SIZE }}"
+        mysql_myisam_sort_buffer_size: "{{ MYSQL_MYISAM_SORT_BUFFER_SIZE }}"
+        mysql_thread_cache_size: "{{ MYSQL_THREAD_CACHE_SIZE }}"
+        mysql_query_cache_type: "{{ MYSQL_QUERY_CACHE_TYPE }}"
+        mysql_query_cache_size: "{{ MYSQL_QUERY_CACHE_SIZE }}"
+        mysql_query_cache_limit: "{{ MYSQL_QUERY_CACHE_LIMIT }}"
+        mysql_max_connections: "{{ MYSQL_MAX_CONNECTIONS }}"
+        mysql_tmp_table_size: "{{ MYSQL_TMP_TABLE_SIZE }}"
+        mysql_max_heap_table_size: "{{ MYSQL_MAX_HEAP_TABLE_SIZE }}"
+        mysql_group_concat_max_len: "{{ MYSQL_GROUP_CONCAT_MAX_LEN }}"
+        mysql_join_buffer_size: "{{ MYSQL_JOIN_BUFFER_SIZE }}"
+        mysql_innodb_file_per_table: "{{ MYSQL_INNODB_FILE_PER_TABLE }}"
+        mysql_innodb_buffer_pool_size: "{{ MYSQL_INNODB_BUFFER_POOL_SIZE }}"
+        mysql_innodb_log_file_size: "{{ MYSQL_INNODB_LOG_FILE_SIZE }}"
+        mysql_innodb_log_buffer_size: "{{ MYSQL_INNODB_LOG_BUFFER_SIZE }}"
+        mysql_innodb_flush_log_at_trx_commit: "{{ MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT }}"
+        mysql_innodb_lock_wait_timeout: "{{ MYSQL_INNODB_LOCK_WAIT_TIMEOUT }}"
+        mysql_innodb_large_prefix: "{{ MYSQL_INNODB_LARGE_PREFIX }}"
+        mysql_innodb_file_format: "{{ MYSQL_INNODB_FILE_FORMAT }}"

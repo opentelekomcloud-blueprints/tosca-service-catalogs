@@ -5,10 +5,10 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.wordpress
-  template_version: 1.0.0
+  template_version: 1.1.0
   template_author: Tri
 
-description: Install wordpress on Ubuntu LAMP stack
+description: Install PHP, Wordpress, OpenLiteSpeed on Ubuntu.
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
@@ -16,7 +16,7 @@ imports:
 node_types:
   otc.nodes.SoftwareComponent.Wordpress:
     derived_from: tosca.nodes.SoftwareComponent
-    description: LAMP stack installation of WordPress, OpenLiteSpeed, MySQL, PHP on Ubuntu.
+    description: Installation of WordPress, OpenLiteSpeed, PHP on Ubuntu. This component requires connecting to a MySQL database.
     tags:
       icon: /images/logo.png
     attributes:
@@ -39,22 +39,6 @@ node_types:
         type: string
         description: Set max size of post data allowed.
         default: '128M'
-      mysql_db:
-        type: string
-        description: Set MySQL root password. The password is auto-generated if not specified.
-        default: 'wordpress'
-      mysql_root_password:
-        type: string
-        description: Set MySQL root password. The password is auto-generated if not specified.
-        required: false
-      mysql_user:
-        type: string
-        description: Set MySQL user for wordpress.
-        default: 'wordpress'
-      mysql_password:
-        type: string
-        description: Set MySQL password for wordpress. The password is auto-generated if not specified.
-        required: false
       ssl_key:
         type: string
         description: Specifies the port number to connect on the remote host.
@@ -79,24 +63,33 @@ node_types:
                     - type: { equal: linux }
                     - architecture: { equal: x86_64 }
                     - distribution: { valid_values: [ ubuntu ] }
+                    - version: { greater_or_equal: 18.04 }
+      - connect_to_mysql_database:
+          capability: tosca.capabilities.Endpoint.Database
+          node: tosca.nodes.Database
+          relationship: otc.relationships.WordpressConnectsToDb
+          occurrences: [1, 1]
+
+relationship_types:
+  otc.relationships.WordpressConnectsToDb:
+    derived_from: tosca.relationships.ConnectsTo
     interfaces:
-      Standard:
-        create:
-          description: Install WordPress, OpenLiteSpeed, MySQL, PHP.
+      Configure:
+        pre_configure_source:
           inputs:
-            WORDPRESS_VERSION: { get_property: [SELF, component_version] }
-            PHP_MEMORY_LIMIT: { get_property: [SELF, php_memory_limit] }
-            PHP_UPLOAD_MAX_FILESIZE: { get_property: [SELF, php_upload_max_filesize] }
-            PHP_POST_MAX_SIZE: { get_property: [SELF, php_post_max_size] }
-            MYSQL_ROOT_PASSWORD: { get_property: [SELF, mysql_root_password] }
-            MYSQL_DB: { get_property: [SELF, mysql_db] }
-            MYSQL_USER: { get_property: [SELF, mysql_user] }
-            MYSQL_PASSWORD: { get_property: [SELF, mysql_password] }
-            # HTTP_HOST: { get_property: [SELF, http_host] }
-            # HTTP_PORT: { get_property: [SELF, http_port] }
-            HTTPS_PORT: { get_property: [SELF, endpoint, port] }
-            SSL_KEY: { get_property: [SELF, ssl_key] }
-            SSL_CRT: { get_property: [SELF, ssl_crt] }
+            WORDPRESS_VERSION: { get_property: [SOURCE, component_version] }
+            PHP_MEMORY_LIMIT: { get_property: [SOURCE, php_memory_limit] }
+            PHP_UPLOAD_MAX_FILESIZE: { get_property: [SOURCE, php_upload_max_filesize] }
+            PHP_POST_MAX_SIZE: { get_property: [SOURCE, php_post_max_size] }
+            HTTPS_PORT: { get_property: [SOURCE, endpoint, port] }
+            SSL_KEY: { get_property: [SOURCE, ssl_key] }
+            SSL_CRT: { get_property: [SOURCE, ssl_crt] }
+            # MySQL inputs
+            MYSQL_HOST: { get_attribute: [TARGET, database_endpoint, ip_address] }
+            MYSQL_DB: { get_property: [TARGET, name] }
+            MYSQL_ENCODING: { get_property: [TARGET, encoding] }
+            MYSQL_USER: { get_property: [TARGET, user] }
+            MYSQL_PASSWORD: { get_property: [TARGET, password] }
           implementation: playbooks/wordpress-install.yaml
 
 capability_types:

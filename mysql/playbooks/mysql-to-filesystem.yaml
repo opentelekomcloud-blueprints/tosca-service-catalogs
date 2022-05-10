@@ -1,0 +1,12 @@
+- name: Prepare the Block storage file system for MySQL
+  hosts: all
+  strategy: free
+  tasks:
+    - name: Remove lost+found in the Block storage file system.
+      become: true
+      file:
+        path: "{{ LOCATION }}/lost+found"
+        state: absent
+    - name: Output data dir
+      set_fact:
+        DATADIR: "{{ LOCATION }}"

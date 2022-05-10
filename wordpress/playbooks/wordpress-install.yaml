@@ -22,8 +22,9 @@
     php_upload_max_filesize: "{{ PHP_UPLOAD_MAX_FILESIZE }}"
     php_post_max_size: "{{ PHP_POST_MAX_SIZE }}"
     #MySQL Settings
-    mysql_root_password: "{{ MYSQL_ROOT_PASSWORD }}"
+    mysql_host: "{{ MYSQL_HOST }}"
     mysql_db: "{{ MYSQL_DB }}"
+    mysql_encoding: "{{ MYSQL_ENCODING }}"
     mysql_user: "{{ MYSQL_USER }}"
     mysql_password: "{{ MYSQL_PASSWORD }}"
     #HTTP Settings
@@ -34,27 +35,15 @@
     ssl_key: "{{ SSL_KEY }}"
     ssl_crt: "{{ SSL_CRT }}"
   tasks:
-    - name: Auto generate MySQL root password if not specified.
-      set_fact:
-        MYSQL_ROOT_PASSWORD: "{{ lookup('password', '/dev/null chars=ascii_letters length=16') }}"
-      no_log: true
-      when:
-        - MYSQL_ROOT_PASSWORD is defined and MYSQL_ROOT_PASSWORD == ''
-    - name: Auto generate MySQL password for wordpress if not specified.
-      set_fact:
-        MYSQL_PASSWORD: "{{ lookup('password', '/dev/null chars=ascii_letters length=16') }}"
-      no_log: true
-      when:
-        - MYSQL_PASSWORD is defined and MYSQL_PASSWORD == ''
     - name: Install openlitespeed
       import_role:
         name: 'roles/openlitespeed_wordpress/roles/openlitespeed'
     - name: Install php
       import_role:
         name: 'roles/openlitespeed_wordpress/roles/php'
-    - name: Install mysql
-      import_role:
-        name: 'roles/openlitespeed_wordpress/roles/mysql'
+    # - name: Install mysql
+    #   import_role:
+    #     name: 'roles/openlitespeed_wordpress/roles/mysql'
     - name: Install wordpress
       import_role:
         name: 'openlitespeed_wordpress/roles/wordpress'

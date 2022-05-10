@@ -1,0 +1,314 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.mysql
+  template_version: 1.0.0
+  template_author: Tri
+
+description: MySQL Component
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - alien-extended-storage-types:3.0.0
+
+node_types:
+  otc.nodes.SoftwareComponent.MySQLServer:
+    derived_from: tosca.nodes.DBMS
+    description: MySQL Server
+    tags:
+      icon: /images/mysql_server.png
+    attributes:
+      datadir: { get_operation_output: [ SELF, Configure, pre_configure_source, DATADIR ] }
+      root_password: { get_operation_output: [SELF, Standard, configure, MYSQL_ROOT_PASSWORD] }
+    properties:
+      root_password:
+        type: string
+        description: MySQL root password. If not specified, the root password is auto-generated.
+        required: false
+      key_buffer_size:
+        type: string
+        description: Index blocks for MyISAM tables are buffered and are shared by all threads. key_buffer_size is the size of the buffer used for index blocks.
+        default: "256M"
+        required: false
+      max_allowed_packet:
+        type: string
+        description: >
+          The maximum size of one packet or any generated/intermediate string, or any parameter sent by the mysql_stmt_send_long_data() C API function.
+        default: "64M"
+        required: false
+      table_open_cache:
+        type: string
+        description: The number of open tables for all threads. Increasing this value increases the number of file descriptors that mysqld requires.
+        default: "256"
+        required: false
+      sort_buffer_size:
+        type: string
+        description: Each session that must perform a sort allocates a buffer of this size.
+        default: "1M"
+        required: false
+      read_buffer_size:
+        type: string
+        description: Each thread that does a sequential scan for a MyISAM table allocates a buffer of this size (in bytes) for each table it scans.
+        default: "1M"
+        required: false
+      read_rnd_buffer_size:
+        type: string
+        description: This variable is used for reads from MyISAM tables, and, for any storage engine, for Multi-Range Read optimization.
+        default: "4M"
+        required: false
+      myisam_sort_buffer_size:
+        type: string
+        description: The size of the buffer that is allocated when sorting MyISAM indexes during a REPAIR TABLE or when creating indexes with CREATE INDEX or ALTER TABLE.
+        default: "64M"
+        required: false
+      thread_cache_size:
+        type: string
+        description: How many threads the server should cache for reuse.
+        default: "8"
+        required: false
+      query_cache_type:
+        type: string
+        description: >
+          Set the query cache type.
+          0: Do not cache results in or retrieve results from the query cache. Note that this does not deallocate the query cache buffer. To do that, you should set query_cache_size to 0.
+          1: Cache all cacheable query results except for those that begin with SELECT SQL_NO_CACHE.
+          2: Cache results only for cacheable queries that begin with SELECT SQL_CACHE.
+        default: "0"
+        constraints:
+          - valid_values: [ "0", "1", "2" ]
+        required: false
+      query_cache_size:
+        type: string
+        description: The amount of memory allocated for caching query results.
+        default: "16M"
+        required: false
+      query_cache_limit:
+        type: string
+        description: Do not cache results that are larger than this number of bytes.
+        default: "1M"
+        required: false
+      max_connections:
+        type: string
+        description: The maximum permitted number of simultaneous client connections.
+        default: "151"
+        required: false
+      tmp_table_size:
+        type: string
+        description: he maximum size of internal in-memory temporary tables. This variable does not apply to user-created MEMORY tables.
+        default: "16M"
+        required: false
+      max_heap_table_size:
+        type: string
+        description: This variable sets the maximum size to which user-created MEMORY tables are permitted to grow. The value of the variable is used to calculate MEMORY table MAX_ROWS values.
+        default: "16M"
+        required: false
+      group_concat_max_len:
+        type: string
+        description: The maximum permitted result length in bytes for the GROUP_CONCAT() function.
+        default: "1024"
+        required: false
+      join_buffer_size:
+        type: string
+        description: The minimum size of the buffer that is used for plain index scans, range index scans, and joins that do not use indexes and thus perform full table scans.
+        default: "262144"
+        required: false
+      innodb_file_per_table:
+        type: string
+        description: When innodb_file_per_table is enabled, tables are created in file-per-table tablespaces by default. When disabled, tables are created in the system tablespace by default.
+        default: "1"
+        constraints:
+          - valid_values: [ "0", "1" ]
+        required: false
+      innodb_buffer_pool_size:
+        type: string
+        description: The size in bytes of the buffer pool, the memory area where InnoDB caches table and index data.
+        default: "256M"
+        required: false
+      innodb_log_file_size:
+        type: string
+        description: The size in bytes of each log file in a log group.
+        default: "64M"
+        required: false
+      innodb_log_buffer_size:
+        type: string
+        description: The size in bytes of the buffer that InnoDB uses to write to the log files on disk.
+        default: "8M"
+        required: false
+      innodb_flush_log_at_trx_commit:
+        type: string
+        description: >
+          Controls the balance between strict ACID compliance for commit operations and higher performance that is possible when commit-related I/O operations are rearranged and done in batches.
+          The default setting of 1 is required for full ACID compliance. Logs are written and flushed to disk at each transaction commit.
+          With a setting of 0, logs are written and flushed to disk once per second. Transactions for which logs have not been flushed can be lost in a crash.
+          With a setting of 2, logs are written after each transaction commit and flushed to disk once per second. Transactions for which logs have not been flushed can be lost in a crash.
+        default: "1"
+        constraints:
+          - valid_values: [ "0", "1", "2" ]
+        required: false
+      innodb_lock_wait_timeout:
+        type: string
+        description: The length of time in seconds an InnoDB transaction waits for a row lock before giving up.
+        default: "50"
+        required: false
+      innodb_large_prefix:
+        type: string
+        description: When this option is enabled, index key prefixes longer than 767 bytes (up to 3072 bytes) are allowed for InnoDB tables that use DYNAMIC or COMPRESSED row format.
+        default: "1"
+        required: false
+      innodb_file_format:
+        type: string
+        description: >
+          Enables an InnoDB file format for file-per-table tablespaces. Supported file formats are Antelope and Barracuda.
+          Antelope is the original InnoDB file format, which supports REDUNDANT and COMPACT row formats. Barracuda is the newer file format, which supports COMPRESSED and DYNAMIC row formats.
+        default: "barracuda"
+        required: false
+        constraints:
+          - valid_values: [ barracuda, antelope ]
+      port:
+        type: integer
+        description: DBMS port
+        default: 3306
+        constraints:
+          - equal: 3306
+      component_version:
+        type: version
+        description: The optional MySQL component’s version.
+        required: false
+    capabilities:
+      host:
+        type: tosca.capabilities.Container
+        valid_source_types: [ otc.nodes.Database.MySQLDatabase ]
+    requirements:
+      - host:
+          capability: tosca.capabilities.Compute
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ debian, fedora, rhel, ubuntu, centos ] }
+      - config_filesystem_as_datadir:
+          description: Connect to a linux file system to use as the data dir
+          capability: tosca.capabilities.Node
+          relationship: otc.relationships.DependsOn.MySqlVolume
+          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            MYSQL_BIND_ADDRESS: { get_attribute: [HOST, private_address] }
+            MYSQL_DATADIR: { get_attribute: [SELF, datadir] }
+            MYSQL_PORT: { get_property: [SELF, port] }
+            MYSQL_ROOT_PASSWORD: { get_property: [SELF, root_password] }
+            MYSQL_KEY_BUFFER_SIZE: { get_property: [SELF, key_buffer_size] }
+            MYSQL_MAX_ALLOWED_PACKET: { get_property: [SELF, max_allowed_packet] }
+            MYSQL_TABLE_OPEN_CACHE: { get_property: [SELF, table_open_cache] }
+            MYSQL_SORT_BUFFER_SIZE: { get_property: [SELF, sort_buffer_size] }
+            MYSQL_READ_BUFFER_SIZE: { get_property: [SELF, read_buffer_size] }
+            MYSQL_READ_RND_BUFFER_SIZE: { get_property: [SELF, read_rnd_buffer_size] }
+            MYSQL_MYISAM_SORT_BUFFER_SIZE: { get_property: [SELF, myisam_sort_buffer_size] }
+            MYSQL_THREAD_CACHE_SIZE: { get_property: [SELF, thread_cache_size] }
+            MYSQL_QUERY_CACHE_TYPE: { get_property: [SELF, query_cache_type] }
+            MYSQL_QUERY_CACHE_SIZE: { get_property: [SELF, query_cache_size] }
+            MYSQL_QUERY_CACHE_LIMIT: { get_property: [SELF, query_cache_limit] }
+            MYSQL_MAX_CONNECTIONS: { get_property: [SELF, max_connections] }
+            MYSQL_TMP_TABLE_SIZE: { get_property: [SELF, tmp_table_size] }
+            MYSQL_MAX_HEAP_TABLE_SIZE: { get_property: [SELF, max_heap_table_size] }
+            MYSQL_GROUP_CONCAT_MAX_LEN: { get_property: [SELF, group_concat_max_len] }
+            MYSQL_JOIN_BUFFER_SIZE: { get_property: [SELF, join_buffer_size] }
+            MYSQL_INNODB_FILE_PER_TABLE: { get_property: [SELF, innodb_file_per_table] }
+            MYSQL_INNODB_BUFFER_POOL_SIZE: { get_property: [SELF, innodb_buffer_pool_size] }
+            MYSQL_INNODB_LOG_FILE_SIZE: { get_property: [SELF, innodb_log_file_size] }
+            MYSQL_INNODB_LOG_BUFFER_SIZE: { get_property: [SELF, innodb_log_buffer_size] }
+            MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT: { get_property: [SELF, innodb_flush_log_at_trx_commit] }
+            MYSQL_INNODB_LOCK_WAIT_TIMEOUT: { get_property: [SELF, innodb_lock_wait_timeout] }
+            MYSQL_INNODB_LARGE_PREFIX: { get_property: [SELF, innodb_large_prefix] }
+            MYSQL_INNODB_FILE_FORMAT: { get_property: [SELF, innodb_file_format] }
+          implementation: playbooks/mysql-create.yaml
+
+  otc.nodes.SoftwareComponent.MySQLDatabase:
+    derived_from: tosca.nodes.Database
+    description: Database component for MySQL
+    tags:
+      icon: /images/mysql_db.jpg
+    properties:
+      name:
+        type: string
+        description: Database name
+        required: true
+        default: "DB1"
+      collation:
+        type: string
+        description: Collation mode.
+        required: false
+        default: utf8_general_ci
+      encoding:
+        type: string
+        description: Encoding mode.
+        required: false
+        default: utf8
+      user:
+        type: string
+        description: DataBase user
+        required: true
+        default: "db1"
+      password:
+        type: string
+        description: DataBase user password
+        required: true
+        default: "secret"
+    capabilities:
+      database_endpoint:
+        type: otc.capabilities.Endpoint.MySQLDatabase
+        occurrences: [0, unbounded]
+    requirements:
+      - host:
+          capability: tosca.capabilities.Container
+          relationship: tosca.relationships.HostedOn
+          node: otc.nodes.SoftwareComponent.MySQLServer
+          occurrences: [1, 1]
+    interfaces:
+     Standard:
+       create:
+         inputs:
+           MYSQL_DB: { get_property: [SELF, name]}
+           MYSQL_COLLATION: { get_property: [SELF, collation]}
+           MYSQL_ENCODING: { get_property: [SELF, encoding]}
+           MYSQL_USER: { get_property: [SELF, user]}
+           MYSQL_PASSWORD: { get_property: [SELF, password]}
+           MYSQL_BIND_ADDRESS: { get_attribute: [HOST, private_address] }
+           MYSQL_ROOT_PASSWORD : { get_attribute: [HOST, root_password]}
+         implementation: playbooks/mysqldb-configure.yaml
+
+capability_types:
+  otc.capabilities.Endpoint.MySQLDatabase:
+    derived_from: tosca.capabilities.Endpoint.Database
+    properties:
+      port:
+        type: integer
+        default: 3306
+        constraints:
+          - equal: 3306
+      secure:
+        type: boolean
+        default: true
+
+relationship_types:
+  otc.relationships.DependsOn.MySqlVolume:
+    derived_from: tosca.relationships.DependsOn
+    valid_target_types: [ alien.nodes.LinuxFileSystem ]
+    attributes:
+      datadir: { get_operation_output: [ SELF, Configure, pre_configure_source, DATADIR ] }
+    interfaces:
+      Configure:
+        pre_configure_source:
+          inputs:
+            LOCATION: { get_property: [TARGET, location] }
+          implementation: playbooks/mysql-to-filesystem.yaml
