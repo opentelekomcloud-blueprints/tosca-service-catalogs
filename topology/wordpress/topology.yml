@@ -2,22 +2,24 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Wordpress
-  template_version: 1.0.0
+  template_version: 1.1.0
   template_author: Tri
 
-description: "Full installation of Wordpress on Ubuntu, including OpenLiteSpeed, Litespeed Cache, MySQL, PHP."
+description: "LAMP stack installation of Wordpress on Ubuntu, including OpenLiteSpeed, Litespeed Cache, MySQL, PHP."
 
 imports:
   - otc-iaas:1.0.1
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.servicecatalogs.wordpress:1.0.0
+  - otc.servicecatalogs.wordpress:1.1.0
+  - otc.servicecatalogs.mysql:1.0.0
+  - alien-extended-storage-types:3.0.0
 
 topology_template:
   node_templates:
     Private:
       metadata:
-        a4c_edit_x: "-3"
-        a4c_edit_y: "-21"
+        a4c_edit_x: "-312"
+        a4c_edit_y: "-39"
       type: otc.nodes.Network.Private
       properties:
         admin_network: false
@@ -25,15 +27,15 @@ topology_template:
         ip_version: 4
     Public:
       metadata:
-        a4c_edit_x: "-266"
-        a4c_edit_y: "-124"
+        a4c_edit_x: "-437"
+        a4c_edit_y: "-178"
       type: otc.nodes.Network.Public
       properties:
         ip_version: 4
     Compute:
       metadata:
-        a4c_edit_x: "-276"
-        a4c_edit_y: "-89"
+        a4c_edit_x: 1
+        a4c_edit_y: "-35"
       type: tosca.nodes.Compute
       requirements:
         - bindsToPortBinding:
@@ -80,14 +82,22 @@ topology_template:
             node: Public
             capability: tosca.capabilities.network.Linkable
             relationship: tosca.relationships.network.LinksTo
+    BlockStorage:
+      type: tosca.nodes.BlockStorage
+      properties:
+        size: "10 GB"
+      requirements:
+        - attachToComputeAttach:
+            type_requirement: attachment
+            node: Compute
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
     Wordpress:
       type: otc.nodes.SoftwareComponent.Wordpress
       properties:
         php_memory_limit: 128
         php_upload_max_filesize: 128M
         php_post_max_size: 128M
-        mysql_db: wordpress
-        mysql_user: wordpress
         ssl_key: "/usr/local/lsws/admin/conf/webadmin.key"
         ssl_crt: "/usr/local/lsws/admin/conf/webadmin.crt"
       requirements:
@@ -96,6 +106,11 @@ topology_template:
             node: Compute
             capability: tosca.capabilities.Compute
             relationship: tosca.relationships.HostedOn
+        - wordpressConnectsToDbMysqldatabaseDatabase_endpoint:
+            type_requirement: connect_to_mysql_database
+            node: MySQLDatabase
+            capability: otc.capabilities.Endpoint.MySQLDatabase
+            relationship: otc.relationships.WordpressConnectsToDb
       capabilities:
         endpoint:
           properties:
@@ -104,13 +119,85 @@ topology_template:
             protocol: tcp
             network_name: PRIVATE
             initiator: source
+    MySQLServer:
+      type: otc.nodes.SoftwareComponent.MySQLServer
+      properties:
+        key_buffer_size: 256M
+        max_allowed_packet: 64M
+        table_open_cache: 256
+        sort_buffer_size: 1M
+        read_buffer_size: 1M
+        read_rnd_buffer_size: 4M
+        myisam_sort_buffer_size: 64M
+        thread_cache_size: 8
+        query_cache_type: 0
+        query_cache_size: 16M
+        query_cache_limit: 1M
+        max_connections: 151
+        tmp_table_size: 16M
+        max_heap_table_size: 16M
+        group_concat_max_len: 1024
+        join_buffer_size: 262144
+        innodb_file_per_table: 1
+        innodb_buffer_pool_size: 256M
+        innodb_log_file_size: 64M
+        innodb_log_buffer_size: 8M
+        innodb_flush_log_at_trx_commit: 1
+        innodb_lock_wait_timeout: 50
+        innodb_large_prefix: 1
+        innodb_file_format: barracuda
+        port: 3306
+      requirements:
+        - hostedOnComputeHost:
+            type_requirement: host
+            node: Compute
+            capability: tosca.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+        - mySqlVolumeLinuxfilesystemFeature:
+            type_requirement: config_filesystem_as_datadir
+            node: LinuxFileSystem
+            capability: tosca.capabilities.Node
+            relationship: otc.relationships.DependsOn.MySqlVolume
+    MySQLDatabase:
+      type: otc.nodes.SoftwareComponent.MySQLDatabase
+      properties:
+        name: wordpressdb
+        collation: "utf8_general_ci"
+        encoding: utf8
+        user: wordpress
+        password: asecretpassword
+      requirements:
+        - hostedOnMysqlserverHost:
+            type_requirement: host
+            node: MySQLServer
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        database_endpoint:
+          properties:
+            port: 3306
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    LinuxFileSystem:
+      type: alien.nodes.LinuxFileSystem
+      properties:
+        fs_type: ext4
+        location: "/var/lib/mysql"
+      requirements:
+        - linuxPartitionBlockstorageFeature:
+            type_requirement: partition
+            node: BlockStorage
+            capability: tosca.capabilities.Node
+            relationship: alien.relationships.LinuxPartition
+        - hostedOnComputeHost:
+            type_requirement: host
+            node: Compute
+            capability: tosca.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
   outputs:
-    Compute_private_address:
-      value: { get_attribute: [ Compute, private_address ] }
-    Compute_public_address:
-      value: { get_attribute: [ Compute, public_address ] }
+    MySQLServer_datadir:
+      value: { get_attribute: [ MySQLServer, datadir ] }
     Wordpress_public_url:
       value: { get_attribute: [ Wordpress, public_url ] }
-    Wordpress_private_url:
-      value: { get_attribute: [ Wordpress, private_url ] }
-
