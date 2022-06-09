@@ -1,0 +1,131 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Install Apache
+  hosts: all
+  strategy: free
+  tasks:
+    - name: Set Apache ServerName to dns_name
+      set_fact:
+        SERVER_NAME: "{{ DNS_NAME if DNS_NAME != '' else 'local.dev' }}"
+    - name: Set apache_vhosts
+      set_fact:
+        apache_vhosts:
+          - servername: "{{ SERVER_NAME }}"
+            documentroot: "{{ DOCUMENT_ROOT }}"
+            extra_parameters: "{{ EXTRA_PARAMETERS }}"
+      when: SSL_ENABLED == 'nossl'
+    - name: Set apache_vhosts to redirect HTTP to HTTPS
+      set_fact:
+        apache_vhosts:
+          - servername: "{{ SERVER_NAME }}"
+            documentroot: "{{ DOCUMENT_ROOT }}"
+            extra_parameters: |
+              RewriteEngine On
+              RewriteCond %{HTTPS} off
+              RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+      when: SSL_ENABLED != 'nossl'
+    - name: Set apache_vhosts_ssl using user-provided certificate file
+      set_fact:
+        apache_vhosts_ssl:
+          - servername: "{{ SERVER_NAME }}"
+            documentroot: "{{ DOCUMENT_ROOT }}"
+            extra_parameters: "{{ EXTRA_PARAMETERS }}"
+            certificate_file: "{{ SSL_CERTIFICATE_FILE }}"
+            certificate_key_file: "{{ SSL_CERTIFICATE_KEY_FILE }}"
+            certificate_chain_file: "{{ SSL_CERTIFICATE_CHAIN_FILE  | default(omit, true) }}"
+      when: SSL_ENABLED == 'provided'
+    - name: Set apache_vhosts_ssl using auto-genated selfsigned certificate file
+      block:
+        - name: Create apache cert dir
+          become: true
+          file:
+            path: "/etc/apache2/ssl"
+            state: directory
+            owner: "www-data"
+            group: "www-data"
+            mode: 0640
+        - name: create private key
+          become: true
+          openssl_privatekey:
+            path: /etc/apache2/ssl/tls.key
+            owner: "www-data"
+            group: "www-data"
+          no_log: true
+        - name: create csr
+          become: true
+          openssl_csr:
+            path: /etc/apache2/ssl/tls.csr
+            privatekey_path: /etc/apache2/ssl/tls.key
+            country_name: DE
+            organization_name: "{{ SERVER_NAME }}"
+            common_name: "{{ APACHE_LISTEN_IP }}"
+        - name: Create cert
+          become: true
+          openssl_certificate:
+            path: /etc/apache2/ssl/tls.cert
+            csr_path: /etc/apache2/ssl/tls.csr
+            privatekey_path: /etc/apache2/ssl/tls.key
+            provider: selfsigned
+            owner: "www-data"
+            group: "www-data"
+        - name: Set apache_vhosts_ssl
+          set_fact:
+            apache_vhosts_ssl:
+              - servername: "{{ SERVER_NAME }}"
+                documentroot: "{{ DOCUMENT_ROOT }}"
+                extra_parameters: "{{ EXTRA_PARAMETERS }}"
+                certificate_file: "/etc/apache2/ssl/tls.cert"
+                certificate_key_file: "/etc/apache2/ssl/tls.key"
+      when: SSL_ENABLED == 'selfsigned'
+    - name: Set apache_vhosts_ssl using letsencrypt
+      block:
+        # Generate certificate using letsencrypt (standalone mode)
+        # See also https://github.com/geerlingguy/ansible-role-certbot
+        - name: Install Certbot.
+          become: true
+          package: "name=certbot state=present"
+        - name: Check if dns_name is specified
+          debug:
+            msg: "dns_name is not specified. Letsencrypt cannot generate an SSL certificate for you but we ignore it!"
+          when: DNS_NAME == ''
+        - name: Generate certificate
+          block:
+            - name: Check if certificate already exists.
+              stat:
+                path: "/etc/letsencrypt/live/{{ DNS_NAME }}/cert.pem"
+              register: letsencrypt_cert
+            - name: Generate new certificate if one doesn't exist.
+              become: true
+              command: "certbot certonly --standalone --noninteractive --agree-tos --email {{ CERTBOT_ADMIN_EMAIL }} -d {{ DNS_NAME }} -d www.{{ DNS_NAME }}"
+              ignore_errors: yes
+              when: not letsencrypt_cert.stat.exists
+            - name: Add cron job for certbot renewal.
+              become: true
+              cron:
+                name: Certbot automatic renewal.
+                job: "certbot renew --quiet --no-self-upgrade"
+                minute: "{{ CERTBOT_AUTO_RENEW_MINUTE }}"
+                hour: "{{ CERTBOT_AUTO_RENEW_HOUR }}"
+          when: DNS_NAME != ''
+        - name: Set apache_vhosts_ssl
+          set_fact:
+            apache_vhosts_ssl:
+              - servername: "{{ SERVER_NAME }}"
+                documentroot: "{{ DOCUMENT_ROOT }}"
+                extra_parameters: "{{ EXTRA_PARAMETERS }}"
+                certificate_file: "/etc/letsencrypt/live/{{ DNS_NAME }}/fullchain.pem"
+                certificate_key_file: "/etc/letsencrypt/live/{{ DNS_NAME }}/privkey.pem"
+      when:
+        - SSL_ENABLED == 'letsencrypt'
+    - name: Install Apache
+      become: true
+      import_role:
+        name: geerlingguy.apache
+      vars:
+        apache_listen_ip: "{{ APACHE_LISTEN_IP }}"
+        apache_remove_default_vhost: "{{ APACHE_REMOVE_DEFAULT_VHOST }}"
+        apache_allow_override: "{{ APACHE_ALLOW_OVERRIDE }}"
+        apache_options: "{{ APACHE_OPTIONS }}"
+        apache_mods_enabled: "{{ APACHE_MODS_ENABLED }}"
+        apache_ssl_protocol: "{{ APACHE_SSL_PROTOCOL }}"
+        apache_ssl_cipher_suite: "{{ APACHE_SSL_CIPHER_SUITE }}"

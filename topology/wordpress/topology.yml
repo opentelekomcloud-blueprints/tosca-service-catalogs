@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Wordpress
-  template_version: 1.1.0
+  template_version: 1.2.0
   template_author: Tri
 
 description: "LAMP stack installation of Wordpress on Ubuntu, including OpenLiteSpeed, Litespeed Cache, MySQL, PHP."
@@ -11,7 +11,7 @@ imports:
   - otc-iaas:1.0.1
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.wordpress:1.1.0
-  - otc.servicecatalogs.mysql:1.0.0
+  - otc.servicecatalogs.mysql:1.1.0
   - alien-extended-storage-types:3.0.0
 
 topology_template:
@@ -184,7 +184,7 @@ topology_template:
       type: alien.nodes.LinuxFileSystem
       properties:
         fs_type: ext4
-        location: "/var/lib/mysql"
+        location: "/mnt"
       requirements:
         - linuxPartitionBlockstorageFeature:
             type_requirement: partition

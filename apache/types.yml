@@ -1,0 +1,208 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.apache
+  template_version: 1.0.0
+  template_author: Tri
+
+description: Apache webserver
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+node_types:
+  otc.nodes.WebServer.Apache:
+    derived_from: tosca.nodes.WebServer
+    description: Apache webserver
+    metadata:
+      icon: /images/apache.png
+    properties:
+      document_root:
+        type: string
+        description: Set the directory from which httpd will serve files.
+        required: true
+        default: "/var/www"
+      allow_override:
+        type: string
+        required: false
+        default: "All"
+      options:
+        type: string
+        required: false
+        default: "FollowSymLinks MultiViews"
+      extra_parameters:
+        type: string
+        required: false
+      ssl_enabled:
+        type: string
+        constraints:
+          - valid_values: [ "nossl", "selfsigned", "letsencrypt", "provided" ]
+        description: >
+          Enable setup SSL VirtualHosts.
+          If set to 'nossl', Apache listens on port 80 and has no SSL enabled.
+          If set to, 'selfsigned', Apache listens on port 443 and uses an auto-generated selfsigned certificates.
+          If set to, 'provided', Apache uses the provided certificate files in 'ssl_certificate_file' and 'ssl_certificate_key_file'.
+          If set to, 'letsencrypt', Apache uses letsencrypt to create the certificates for the 'dns_name' specified in the 'data_endpoint' below.
+          For letsencrypt to validate the DNS name successfully, you must update the nameservers of your DNS name to: 'ns1.open-telekom-cloud.com' and 'ns2.open-telekom-cloud.com' before.
+        required: false
+        default: selfsigned
+      certbot_admin_email:
+        description: If ssl_enabled is 'letsencrypt', specify the admin email to receive expiry notice from Letsencrypt and can also be used to recover lost key.
+        type: string
+        required: false
+        default: email@example.com
+      certbot_auto_renew_hour:
+        description: >
+          If ssl_enabled is 'letsencrypt', specify the hour of the day when cert is renew.
+          The defaults run certbot renew via cron every day at 03:30:00
+        type: string
+        required: false
+        default: "3"
+      certbot_auto_renew_minute:
+        description: >
+          If ssl_enabled is 'letsencrypt', specify the minutes of the specified hour when cert is renew.
+          The defaults run certbot renew via cron every day at 03:30:00
+        type: string
+        required: false
+        default: "30"
+      ssl_certificate_file:
+        type: string
+        required: false
+        description: If ssl_enabled is 'provided', specify path to the certificate file.
+        default: "/path/to/certificate.crt"
+      ssl_certificate_key_file:
+        type: string
+        required: false
+        description: If ssl_enabled is 'provided', specify path to the certificate key file.
+        default: "/path/to/certificate.key"
+      ssl_certificate_chain_file:
+        type: string
+        required: false
+        description: If ssl_enabled is 'provided', (optional) specify path to the certificate chain file.
+        default: "/path/to/certificate_chain.crt"
+      ssl_protocol:
+        type: string
+        description: Specify which versions of the SSL/TLS protocol will be accepted in new connections.
+        required: false
+        default: "All -SSLv2 -SSLv3"
+      ssl_cipher_suite:
+        type: string
+        description: Specify cipher Suite available for negotiation in SSL handshake.
+        required: false
+        default: "AES256+EECDH:AES256+EDH"
+      remove_default_vhost:
+        type: boolean
+        description: Set to true to remove the default virtualhost configuration file.
+        required: false
+        default: true
+      mods_enabled:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          (For Debian/Ubuntu ONLY) Specify which Apache mods to enable or disable.
+          See the mods-available directory inside the apache configuration directory (/etc/apache2/mods-available) for all the available mods.
+        required: false
+        default:
+          - 'rewrite.load'
+          - 'ssl.load'
+      component_version:
+        type: version
+        description: (Not supported) The installation uses the Apache version available in the OS's core repositories.
+        required: false
+    capabilities:
+      host:
+        type: otc.capabilities.Container.ApacheHostWebApplication
+        valid_source_types: [ tosca.nodes.WebApplication ]
+      data_endpoint:
+        type: otc.capabilities.Apache.Endpoint.Public
+      admin_endpoint:
+        type: tosca.capabilities.Endpoint.Admin
+        properties:
+          protocol: tcp
+          port: 9999
+          secure: true
+          initiator: source
+    requirements:
+      - host:
+          capability: tosca.capabilities.Compute
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1,1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ debian, rhel, ubuntu, centos, suse, solaris ] }
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            APACHE_LISTEN_IP: { get_attribute: [HOST, private_address] }
+            DOCUMENT_ROOT: { get_property: [SELF, document_root] }
+            DNS_NAME: { get_property: [SELF, data_endpoint, dns_name] }
+            APACHE_REMOVE_DEFAULT_VHOST: { get_property: [SELF, remove_default_vhost] }
+            APACHE_ALLOW_OVERRIDE: { get_property: [SELF, allow_override] }
+            APACHE_OPTIONS: { get_property: [SELF, options] }
+            EXTRA_PARAMETERS: { get_property: [SELF, extra_parameters] }
+            SSL_ENABLED: { get_property: [SELF, ssl_enabled] }
+            CERTBOT_ADMIN_EMAIL: { get_property: [SELF, certbot_admin_email] }
+            CERTBOT_AUTO_RENEW_HOUR: { get_property: [SELF, certbot_auto_renew_hour] }
+            CERTBOT_AUTO_RENEW_MINUTE: { get_property: [SELF, certbot_auto_renew_minute] }
+            APACHE_SSL_PROTOCOL: { get_property: [SELF, ssl_protocol] }
+            APACHE_SSL_CIPHER_SUITE: { get_property: [SELF, ssl_cipher_suite] }
+            SSL_CERTIFICATE_FILE: { get_property: [SELF, ssl_certificate_file] }
+            SSL_CERTIFICATE_KEY_FILE: { get_property: [SELF, ssl_certificate_key_file] }
+            SSL_CERTIFICATE_CHAIN_FILE: { get_property: [SELF, ssl_certificate_chain_file] }
+            APACHE_MODS_ENABLED: { get_property: [SELF, mods_enabled] }
+          implementation: playbooks/apache-create.yaml
+
+  otc.nodes.WebApplication.ApacheWebApp:
+    abstract: true
+    derived_from: tosca.nodes.WebApplication
+    description: >
+      A web application that can be managed and run by Apache webserver.
+    requirements:
+      - host:
+          capability: otc.capabilities.Container.ApacheHostWebApplication
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+
+capability_types:
+  otc.capabilities.Container.ApacheHostWebApplication:
+    derived_from: tosca.capabilities.Container
+
+  otc.capabilities.Apache.Endpoint.Public:
+    derived_from: tosca.capabilities.Endpoint.Public
+    properties:
+      network_name:
+        description: This capability represents a public endpoint which is accessible to the general internet.
+        type: string
+        constraints:
+          - valid_values: [ PUBLIC ]
+        default: PUBLIC
+      dns_name:
+        description: >
+          Specify a domain name for users to visit your web application over the internet.
+          If the domain name is specified, a DNS zone with a record set type A pointing to the floating ip of the Apache server will be created on Open Telekom Cloud.
+          The DNS zone takes effect only after you update the nameservers of your domain name at the registration service to: 'ns1.open-telekom-cloud.com' and 'ns2.open-telekom-cloud.com'.
+        type: string
+        constraints:
+          - pattern: "^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$"
+        required: false
+      protocol:
+        type: string
+        constraints:
+          - valid_values: [ tcp ]
+        default: tcp
+      port:
+        type: integer
+        default: 80
+      secure:
+        type: boolean
+        default: false

@@ -1,0 +1,36 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Ensure additional dependency PHP packages for Nextcloud
+  hosts: all
+  strategy: free
+  gather_facts: no
+  become: true
+  vars:
+    php_version: "{{ PHP_VERSION }}"
+  tasks:
+    - name: Install additional PHP packages
+      package:
+        name:
+          - php{{ php_version }}-zip
+          - php{{ php_version }}-intl
+          - php{{ php_version }}-bz2
+          - php{{ php_version }}-ldap
+          - php{{ php_version }}-mysql
+          - php{{ php_version }}-fileinfo
+          - php{{ php_version }}-exif
+          - php{{ php_version }}-apcu
+          - php{{ php_version }}-memcached
+          - php{{ php_version }}-imagick
+          # The following packages are installed by default in the PHP component
+          #- php{{ php_version }}-apcu
+          #- php{{ php_version }}-fpm
+          #- php{{ php_version }}-gd
+          #- php{{ php_version }}-curl
+          #- php{{ php_version }}-xml
+          #- php{{ php_version }}-mbstring
+          #- php{{ php_version }}-json
+          #- php{{ php_version }}-imap
+          # This fixes ansible failed to set permissions on the temporary when using GoogleCloud ubuntu image
+          # https://stackoverflow.com/questions/46352173/ansible-failed-to-set-permissions-on-the-temporary
+          - acl
+        state: present

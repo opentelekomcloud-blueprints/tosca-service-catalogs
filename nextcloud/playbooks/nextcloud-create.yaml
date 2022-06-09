@@ -1,0 +1,37 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Download and unpack Nextcloud
+  hosts: all
+  strategy: free
+  gather_facts: no
+  tasks:
+    - name: create datadir
+      become: true
+      file:
+        name: "{{ DATADIR }}"
+        state: directory
+        owner: "www-data"
+        group: "www-data"
+        mode: "0755"
+    - name: Download nextcloud archive. Timeout after 10 minutes.
+      get_url:
+        url:  "{{ DOWNLOAD_URL }}"
+        dest: /tmp/nextcloud.tar.bz2
+        checksum: "sha256:{{ DOWNLOAD_URL }}.sha256"
+      async: 900
+      poll: 10
+    - name: Unarchive nextcloud
+      become: true
+      unarchive:
+        src: /tmp/nextcloud.tar.bz2
+        dest: "/var/www"
+        remote_src: true
+        creates: "/var/www/nextcloud/occ"
+    - name: Set permission
+      become: true
+      file:
+        path: "{{ DOCUMENT_ROOT }}"
+        state: directory
+        recurse: yes
+        owner: "www-data"
+        group: "www-data"

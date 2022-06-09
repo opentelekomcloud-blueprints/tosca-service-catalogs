@@ -1,0 +1,47 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Install PHP
+  hosts: all
+  strategy: free
+  become: true
+  vars:
+    php_version: "{{ PHP_VERSION }}"
+    php_packages_extra: "{{ PHP_PACKAGES_EXTRA }}"
+    php_memory_limit: "{{ PHP_MEMORY_LIMIT }}"
+    php_max_execution_time: "{{ PHP_MAX_EXECUTION_TIME }}"
+    php_max_input_time: "{{ PHP_MAX_INPUT_TIME }}"
+    php_max_input_vars: "{{ PHP_MAX_INPUT_VARS }}"
+    php_realpath_cache_size: "{{ PHP_REALPATH_CACHE_SIZE }}"
+    php_file_uploads: "{{ PHP_FILE_UPLOADS }}"
+    php_upload_max_filesize: "{{ PHP_UPLOAD_MAX_FILESIZE }}"
+    php_allow_url_fopen: "{{ PHP_ALLOW_URL_FOPEN }}"
+    php_enable_apc: "{{ PHP_ENABLE_APC }}"
+    php_apc_shm_size: "{{ PHP_APC_SHM_SIZE }}"
+    php_apc_enable_cli: "{{ PHP_APC_ENABLE_CLI }}"
+    php_opcache_zend_extension: "{{ PHP_OPCACHE_ZEND_EXTENSION }}"
+    php_opcache_enable_cli: "{{ PHP_OPCACHE_ENABLE_CLI }}"
+    php_opcache_memory_consumption: "{{ PHP_OPCACHE_MEMORY_CONSUMPTION }}"
+    php_opcache_interned_strings_buffer: "{{ PHP_OPCACHE_INTERNED_STRINGS_BUFFER }}"
+    php_opcache_max_accelerated_files: "{{ PHP_OPCACHE_MAX_ACCELERATED_FILES }}"
+    php_opcache_max_wasted_percentage: "{{ PHP_OPCACHE_MAX_WASTED_PERCENTAGE }}"
+    php_opcache_validate_timestamps: "{{ PHP_OPCACHE_VALIDATE_TIMESTAMPS }}"
+    php_opcache_revalidate_path: "{{ PHP_OPCACHE_REVALIDATE_PATH }}"
+    php_opcache_revalidate_freq: "{{ PHP_OPCACHE_REVALIDATE_FREQ }}"
+    php_opcache_max_file_size: "{{ PHP_OPCACHE_MAX_FILE_SIZE }}"
+    php_enable_php_fpm: false
+    php_enable_webserver: false
+  tasks:
+    - name: Set disable Opcache
+      set_fact:
+        php_opcache_enable: "0"
+      when: PHP_OPCACHE_ENABLE == 'false'
+    - name: Define PHP repo for RedHat OS family
+      include_role:
+        name: geerlingguy.repo-remi
+      when: ansible_os_family == 'RedHat'
+    - name: Add repository for PHP versions
+      import_role:
+        name: geerlingguy.php-versions
+    - name: Install PHP
+      import_role:
+        name: geerlingguy.php

@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.mysql
-  template_version: 1.0.0
+  template_version: 1.1.0
   template_author: Tri
 
 description: MySQL Component
@@ -175,7 +175,7 @@ node_types:
           - equal: 3306
       component_version:
         type: version
-        description: The optional MySQL component’s version.
+        description: (Not supported) The installation uses the MySQL version available in the OS's core repositories.
         required: false
     capabilities:
       host:
@@ -193,7 +193,7 @@ node_types:
                   properties:
                     - type: { equal: linux }
                     - architecture: { equal: x86_64 }
-                    - distribution: { valid_values: [ debian, fedora, rhel, ubuntu, centos ] }
+                    - distribution: { valid_values: [ debian, fedora, rhel, ubuntu, centOS ] }
       - config_filesystem_as_datadir:
           description: Connect to a linux file system to use as the data dir
           capability: tosca.capabilities.Node
@@ -311,4 +311,5 @@ relationship_types:
         pre_configure_source:
           inputs:
             LOCATION: { get_property: [TARGET, location] }
-          implementation: playbooks/mysql-to-filesystem.yaml
+          implementation: playbooks/mysql-move-datadir.yaml
+          #implementation: playbooks/mysql-to-filesystem.yaml

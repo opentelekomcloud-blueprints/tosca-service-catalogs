@@ -1,10 +1,12 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 - name: Create MySQL database and user
   hosts: all
   strategy: free
-  # become: true
-  # become_method: sudo
+  gather_facts: no
   tasks:
     - name: Create MySQL database
+      become: true
       mysql_db:
         name: "{{ MYSQL_DB }}"
         collation: "{{ MYSQL_COLLATION }}"
@@ -13,6 +15,7 @@
         login_password: "{{ MYSQL_ROOT_PASSWORD }}"
         state: present
     - name: Create MySQL user
+      become: true
       mysql_user:
         name: "{{ MYSQL_USER }}"
         password: "{{ MYSQL_PASSWORD }}"

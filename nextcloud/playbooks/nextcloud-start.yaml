@@ -1,0 +1,65 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Setup Nextcloud
+  hosts: all
+  strategy: free
+  gather_facts: no
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: Set trusted domain
+      set_fact:
+        TRUSTED_DOMAIN: "{{ DNS_NAME if DNS_NAME != '' else 'localhost' }}"
+    - name: Set system config default values
+      become: true
+      become_user: "www-data"
+      shell: "php --define apc.enable_cli=1 occ config:system:set {{ item.key }} {{ item.value}}"
+      args:
+        chdir: "{{ DOCUMENT_ROOT }}"
+      with_items: "{{ nc_config }}"
+    - name: Set mail configs
+      block:
+        # Parse dict from json
+        - name: Parse mail_configs dict
+          set_fact:
+            mail_configs: "{{ MAIL_CONFIGS }}"
+          no_log: true
+        - name: Set nextcloud mail config.php values
+          become: true
+          become_user: "www-data"
+          shell: "php --define apc.enable_cli=1 occ config:system:set {{ item.key }} --value={{ item.value }}"
+          args:
+            chdir: "{{ DOCUMENT_ROOT }}"
+          with_dict: "{{ mail_configs }}"
+      when: MAIL_CONFIGS != ''
+    - name: Install apps
+      become: true
+      become_user: "www-data"
+      shell: "php --define apc.enable_cli=1 occ app:install {{ item }}"
+      args:
+        chdir: "{{ DOCUMENT_ROOT }}"
+        creates: "{{ DOCUMENT_ROOT }}/apps/{{ item }}"
+      with_items: "{{ APP_ENABLED }}"
+      when: APP_ENABLED != ''
+    - name: Config apps
+      block:
+        # Parse dict from json
+        - name: Parse app_configs dict
+          set_fact:
+            app_configs: "{{ APP_CONFIGS }}"
+          no_log: true
+        - name: Config app
+          become: true
+          become_user: "www-data"
+          shell: "php --define apc.enable_cli=1 occ config:app:set {{ item.key }} --value={{ item.value }}"
+          args:
+            chdir: "{{ DOCUMENT_ROOT }}"
+          with_dict: "{{ app_configs }}"
+      when: APP_CONFIGS != ''
+    - name: Add nextcloud cronjob
+      become: true
+      cron:
+        name: nextcloud cronjob
+        minute: '*/5'
+        user: "www-data"
+        job: "php --define apc.enable_cli=1 -f {{ DOCUMENT_ROOT }}/cron.php > /dev/null 2>&1"
