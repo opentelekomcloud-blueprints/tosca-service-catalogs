@@ -1,0 +1,57 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Move MySQL datadir to new location on disk
+  hosts: all
+  gather_facts: yes
+  strategy: free
+  vars:
+    MYSQL_DEFAULT_DATADIR: "/var/lib/mysql"
+  tasks:
+    - name: Create new MySQL directory on disk
+      become: true
+      file:
+        path: "{{ LOCATION }}/mysql"
+        state: directory
+        mode: 0755
+        setype: mysqld_db_t
+    - name: Symlink MySQL default datadir to new location on disk so that packages will be installed in the default folder and go to new location.
+      become: true
+      file:
+        src: "{{ LOCATION }}/mysql"
+        dest: "{{ MYSQL_DEFAULT_DATADIR }}"
+        state: link
+    - name: Configure AppArmor
+      block:
+        - name: Add alias to AppArmor
+          become: true
+          lineinfile:
+            path: /etc/apparmor.d/tunables/alias
+            line: "alias {{ MYSQL_DEFAULT_DATADIR }} -> {{ LOCATION }}/mysql,"
+            state: present
+            insertafter: EOF
+        - name: Reload apparmor
+          become: true
+          service:
+            name: apparmor
+            state: reloaded
+      when:
+        - ansible_os_family == 'Debian'
+    - name: Configure Selinux
+      block:
+        - name: Set SELinux context for new MySQL directory if SElinux is enabled
+          become: true
+          sefcontext:
+            target: "{{ LOCATION }}/mysql"
+            setype: mysqld_db_t
+            state: present
+          register: mysql_dir
+          when: ansible_selinux is defined and ansible_selinux != False and ansible_selinux.status == 'enabled'
+        - name: Apply new SELinux context for new MySQL directory
+          become: true
+          command: "restorecon -irv {{ LOCATION }}/mysql"
+          when: mysql_dir.changed
+      when:
+        - ansible_os_family == 'RedHat'
+    - name: Output new data dir for MySQLServer config
+      set_fact:
+        DATADIR: "{{ LOCATION }}/mysql"

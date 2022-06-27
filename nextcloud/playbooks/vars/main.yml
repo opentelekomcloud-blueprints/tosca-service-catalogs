@@ -1,0 +1,5 @@
+---
+nc_config:
+  - { key: "trusted_domains", value: '1 --value={{ NEXTCLOUD_IP }}' }
+  - { key: "trusted_domains", value: '2 --value={{ TRUSTED_DOMAIN }}' }
+  - { key: "memcache.local", value: '--value="\OC\Memcache\APCu"' }

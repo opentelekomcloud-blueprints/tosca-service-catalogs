@@ -1,3 +1,5 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 - name: Install MySQL
   hosts: all
   strategy: free
@@ -13,6 +15,15 @@
         mysql_datadir: "{{ MYSQL_DATADIR }}"
       when:
         - MYSQL_DATADIR is defined and MYSQL_DATADIR != ''
+    # Fix OTC CentOS image somehow has mariadb-libs pre-installed but it has version conflict.
+    - name: Cleanup before install
+      become: true
+      package:
+        name:
+          - mariadb-libs
+          - mariadb-config
+        state: absent
+      when: ansible_os_family == 'RedHat'
     - name: Install mysql
       become: true
       import_role:

@@ -1,0 +1,333 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.php
+  template_version: 1.0.0
+  template_author: Tri
+
+description: PHP
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+data_types:
+  otc.datatypes.FpmPool:
+    derived_from: tosca.datatypes.Root
+    properties:
+      pool_name:
+        type: string
+        description: Pool name.
+        default: www
+        required: true
+      pool_listen:
+        type: string
+        description: >
+          The address on which to accept FastCGI requests.
+          Valid syntaxes are: 'ip.add.re.ss:port', 'port', '/path/to/unix/socket'.
+        default: "127.0.0.1"
+        required: true
+      pool_listen_allowed_clients:
+        type: string
+        description: List of IPv4 or IPv6 addresses of FastCGI clients which are allowed to connect.
+        default: "127.0.0.1"
+        required: false
+      pool_pm:
+        type: string
+        constraints:
+          - valid_values: [ "static", "ondemand", "dynamic" ]
+        description: >
+          Choose how the process manager will control the number of child processes.
+          static: the number of child processes is fixed (max_children).
+          ondemand: the processes spawn on demand (when requested, as opposed to dynamic, where start_servers are started when the service is started.
+          dynamic - the number of child processes is set dynamically based on the following directives: max_children, start_servers, min_spare_servers, max_spare_servers.
+        default: dynamic
+        required: false
+      pool_pm_max_children:
+        type: integer
+        description: >
+          The number of child processes to be created when pm is set to static and the maximum number of child processes to be created when pm is set to dynamic.
+        default: 50
+        required: false
+      pool_pm_start_servers:
+        type: integer
+        description: The number of child processes created on startup. Used only when pm is set to dynamic.
+        default: 5
+        required: false
+      pool_pm_min_spare_servers:
+        type: integer
+        description: The desired minimum number of idle server processes. Used only when pm is set to dynamic.
+        default: 5
+        required: false
+      pool_pm_max_spare_servers:
+        type: integer
+        description: The desired maximum number of idle server processes. Used only when pm is set to dynamic.
+        default: 5
+        required: false
+      pool_pm_max_requests:
+        type: integer
+        description: >
+          The number of requests each child process should execute before respawning.
+          This can be useful to work around memory leaks in 3rd party libraries. For endless request processing specify '0'.
+        default: 500
+        required: false
+
+node_types:
+  otc.nodes.SoftwareComponent.PHP:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: Install PHP standalone without a web server.
+    metadata:
+      icon: /images/php.png
+    properties:
+      component_version:
+        type: version
+        default: 7.4
+        constraints:
+          - greater_or_equal: 7.3
+      php_packages_extra:
+        type: list
+        entry_schema:
+          type: string
+        description: >
+          A list of extra PHP packages to install.
+        required: false
+        default: []
+      memory_limit:
+        type: string
+        description: >
+          This sets the maximum amount of memory in bytes that a script is allowed to allocate.
+          This helps prevent poorly written scripts for eating up all available memory on a server. Note that to have no memory limit, set this directive to -1.
+        default: "256M"
+        required: false
+      max_execution_time:
+        type: string
+        description: >
+          This sets the maximum time in seconds a script is allowed to run before it is terminated by the parser. This helps prevent poorly written scripts from tying up the server.
+        default: "60"
+        required: false
+      max_input_time:
+        type: string
+        description: >
+          This sets the maximum time in seconds a script is allowed to parse input data, like POST and GET.
+          Timing begins at the moment PHP is invoked at the server and ends when execution begins. Set to 0 to allow unlimited time.
+        default: "60"
+        required: false
+      max_input_vars:
+        type: string
+        description: >
+          How many input variables may be accepted (limit is applied to $_GET, $_POST and $_COOKIE superglobal separately).
+          Use of this directive mitigates the possibility of denial of service attacks which use hash collisions.
+          If there are more input variables than specified by this directive, an E_WARNING is issued, and further input variables are truncated from the request.
+        default: "1000"
+        required: false
+      realpath_cache_size:
+        type: string
+        description: Determines the size of the realpath cache to be used by PHP.
+        default: "32K"
+        required: false
+      file_uploads:
+        type: string
+        description: Whether or not to allow HTTP file uploads.
+        default: "On"
+        required: false
+      upload_max_filesize:
+        type: string
+        description: The maximum size of an uploaded file.
+        default: "64M"
+        required: false
+      allow_url_fopen:
+        type: string
+        description: This option enables the URL-aware fopen wrappers that enable accessing URL object like files.
+        default: "On"
+        required: false
+      apc_enable:
+        type: boolean
+        description: Set to true to enable APCu.
+        default: true
+        required: false
+      apc_shm_size:
+        type: string
+        description: Specify the size of each shared memory segment given by a shorthand notation.
+        default: "96M"
+        required: false
+      apc_enable_cli:
+        type: string
+        constraints:
+          - valid_values: [ '0', '1' ]
+        description: Mostly for testing and debugging. Setting this enables APC for the CLI version of PHP.
+        default: "0"
+        required: false
+      opcache_enable:
+        type: boolean
+        description: Enables the opcode cache. When disabled, code is not optimised or cached.
+        default: true
+        required: false
+      opcache_enable_cli:
+        type: string
+        constraints:
+          - valid_values: [ '0', '1' ]
+        description: Enables the opcode cache for the CLI version of PHP.
+        default: "0"
+        required: false
+      opcache_zend_extension:
+        type: string
+        description: Name of dynamically loadable Zend extension (for example XDebug) to load when PHP starts up.
+        default: "opcache.so"
+        required: false
+      opcache_memory_consumption:
+        type: string
+        description: The size of the shared memory storage used by OPcache, in megabytes.
+        default: "96"
+        required: false
+      opcache_interned_strings_buffer:
+        type: string
+        description: The amount of memory used to store interned strings, in megabytes.
+        default: "16"
+        required: false
+      opcache_max_accelerated_files:
+        type: string
+        description: The maximum number of keys (and therefore scripts) in the OPcache hash table.
+        default: "4096"
+        required: false
+      opcache_max_wasted_percentage:
+        type: string
+        description: >
+          The maximum percentage of wasted memory that is allowed before a restart is scheduled, if there is insufficient free memory.
+          The maximum permissible value is "50", which is enforced if a larger value is set.
+        default: "5"
+        required: false
+      opcache_validate_timestamps:
+        type: string
+        constraints:
+          - valid_values: [ '0', '1' ]
+        description: If enabled, OPcache will check for updated scripts every opcache_revalidate_freq seconds.
+        default: "1"
+        required: false
+      opcache_revalidate_freq:
+        type: string
+        description: How often to check script timestamps for updates, in seconds. 0 will result in OPcache checking for updates on every request.
+        default: "2"
+        required: false
+      opcache_revalidate_path:
+        type: string
+        constraints:
+          - valid_values: [ '0', '1' ]
+        description: >
+          If disabled, existing cached files using the same include_path will be reused. Thus, if a file with the same name is elsewhere in the include_path, it won't be found.
+        default: "0"
+        required: false
+      opcache_max_file_size:
+        type: string
+        description: The maximum file size that will be cached, in bytes. If this is 0, all files will be cached.
+        default: "0"
+        required: false
+    requirements:
+      - host:
+          capability: tosca.capabilities.Container
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ debian, ubuntu, centos, rhel ] }
+    interfaces:
+      Standard:
+        inputs:
+          PHP_VERSION: { get_property: [SELF, component_version] }
+          PHP_PACKAGES_EXTRA: { get_property: [SELF, php_packages_extra] }
+          PHP_MEMORY_LIMIT: { get_property: [SELF, memory_limit] }
+          PHP_MAX_EXECUTION_TIME: { get_property: [SELF, max_execution_time] }
+          PHP_MAX_INPUT_TIME: { get_property: [SELF, max_input_time] }
+          PHP_MAX_INPUT_VARS: { get_property: [SELF, max_input_vars] }
+          PHP_REALPATH_CACHE_SIZE: { get_property: [SELF, realpath_cache_size] }
+          PHP_FILE_UPLOADS: { get_property: [SELF, file_uploads] }
+          PHP_UPLOAD_MAX_FILESIZE: { get_property: [SELF, upload_max_filesize] }
+          PHP_ALLOW_URL_FOPEN: { get_property: [SELF, allow_url_fopen] }
+          PHP_ENABLE_APC: { get_property: [SELF, apc_enable] }
+          PHP_APC_SHM_SIZE: { get_property: [SELF, apc_shm_size] }
+          PHP_APC_ENABLE_CLI: { get_property: [SELF, apc_enable_cli] }
+          PHP_OPCACHE_ZEND_EXTENSION: { get_property: [SELF, opcache_zend_extension] }
+          PHP_OPCACHE_ENABLE: { get_property: [SELF, opcache_enable] }
+          PHP_OPCACHE_ENABLE_CLI: { get_property: [SELF, opcache_enable_cli] }
+          PHP_OPCACHE_MEMORY_CONSUMPTION: { get_property: [SELF, opcache_memory_consumption] }
+          PHP_OPCACHE_INTERNED_STRINGS_BUFFER: { get_property: [SELF, opcache_interned_strings_buffer] }
+          PHP_OPCACHE_MAX_ACCELERATED_FILES: { get_property: [SELF, opcache_max_accelerated_files] }
+          PHP_OPCACHE_MAX_WASTED_PERCENTAGE: { get_property: [SELF, opcache_max_wasted_percentage] }
+          PHP_OPCACHE_VALIDATE_TIMESTAMPS: { get_property: [SELF, opcache_validate_timestamps] }
+          PHP_OPCACHE_REVALIDATE_PATH: { get_property: [SELF, opcache_revalidate_path] }
+          PHP_OPCACHE_REVALIDATE_FREQ: { get_property: [SELF, opcache_revalidate_freq] }
+          PHP_OPCACHE_MAX_FILE_SIZE: { get_property: [SELF, opcache_max_file_size] }
+        create: playbooks/php-create.yaml
+
+  otc.nodes.SoftwareComponent.PHP-FPM:
+    derived_from: otc.nodes.SoftwareComponent.PHP
+    description: Install PHP with FPM, create FPM pools, and configure Apache for PHP-FPM usage.
+    metadata:
+      icon: /images/php.png
+    properties:
+      fpm_pools:
+        type: list
+        entry_schema:
+          type: otc.datatypes.FpmPool
+        description: Specify a list of FPM pools to create.
+        required: true
+        default:
+          - pool_name: www
+            pool_listen: "127.0.0.1:9000"
+            pool_listen_allowed_clients: "127.0.0.1"
+            pool_pm: dynamic
+            pool_pm_max_children: 50
+            pool_pm_start_servers: 5
+            pool_pm_min_spare_servers: 5
+            pool_pm_max_spare_servers: 5
+            pool_pm_max_requests: 500
+    requirements:
+      - depends_on_webserver:
+          capability: tosca.capabilities.Node
+          relationship: otc.relationships.PHPDependsOnWebserver
+          occurrences: [1, 1]
+    interfaces:
+      Standard:
+        inputs:
+          PHP_VERSION: { get_property: [SELF, component_version] }
+          PHP_PACKAGES_EXTRA: { get_property: [SELF, php_packages_extra] }
+          PHP_MEMORY_LIMIT: { get_property: [SELF, memory_limit] }
+          PHP_MAX_EXECUTION_TIME: { get_property: [SELF, max_execution_time] }
+          PHP_MAX_INPUT_TIME: { get_property: [SELF, max_input_time] }
+          PHP_MAX_INPUT_VARS: { get_property: [SELF, max_input_vars] }
+          PHP_REALPATH_CACHE_SIZE: { get_property: [SELF, realpath_cache_size] }
+          PHP_FILE_UPLOADS: { get_property: [SELF, file_uploads] }
+          PHP_UPLOAD_MAX_FILESIZE: { get_property: [SELF, upload_max_filesize] }
+          PHP_ALLOW_URL_FOPEN: { get_property: [SELF, allow_url_fopen] }
+          PHP_ENABLE_APC: { get_property: [SELF, apc_enable] }
+          PHP_APC_SHM_SIZE: { get_property: [SELF, apc_shm_size] }
+          PHP_APC_ENABLE_CLI: { get_property: [SELF, apc_enable_cli] }
+          PHP_OPCACHE_ZEND_EXTENSION: { get_property: [SELF, opcache_zend_extension] }
+          PHP_OPCACHE_ENABLE: { get_property: [SELF, opcache_enable] }
+          PHP_OPCACHE_ENABLE_CLI: { get_property: [SELF, opcache_enable_cli] }
+          PHP_OPCACHE_MEMORY_CONSUMPTION: { get_property: [SELF, opcache_memory_consumption] }
+          PHP_OPCACHE_INTERNED_STRINGS_BUFFER: { get_property: [SELF, opcache_interned_strings_buffer] }
+          PHP_OPCACHE_MAX_ACCELERATED_FILES: { get_property: [SELF, opcache_max_accelerated_files] }
+          PHP_OPCACHE_MAX_WASTED_PERCENTAGE: { get_property: [SELF, opcache_max_wasted_percentage] }
+          PHP_OPCACHE_VALIDATE_TIMESTAMPS: { get_property: [SELF, opcache_validate_timestamps] }
+          PHP_OPCACHE_REVALIDATE_PATH: { get_property: [SELF, opcache_revalidate_path] }
+          PHP_OPCACHE_REVALIDATE_FREQ: { get_property: [SELF, opcache_revalidate_freq] }
+          PHP_OPCACHE_MAX_FILE_SIZE: { get_property: [SELF, opcache_max_file_size] }
+          PHP_FPM_POOLS: { get_property: [SELF, fpm_pools] }
+        create: playbooks/php-fpm-create.yaml
+
+relationship_types:
+  otc.relationships.PHPDependsOnWebserver:
+    derived_from: tosca.relationships.DependsOn
+    valid_target_types: [ tosca.nodes.WebServer ]
+
+capability_types:
+  otc.capabilities.Runtime.PHP:
+    derived_from: tosca.capabilities.Node
+    description: Provide a PHP runtime.

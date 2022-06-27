@@ -22,3 +22,15 @@
 [submodule "mysql/playbooks/roles/geerlingguy.ansible-role-mysql"]
 	path = mysql/playbooks/roles/geerlingguy.ansible-role-mysql
 	url = https://github.com/geerlingguy/ansible-role-mysql.git
+[submodule "apache/playbooks/roles/geerlingguy.ansible-role-apache"]
+	path = apache/playbooks/roles/geerlingguy.apache
+	url = https://github.com/geerlingguy/ansible-role-apache.git
+[submodule "php/playbooks/roles/geerlingguy.ansible-role-php"]
+	path = php/playbooks/roles/geerlingguy.php
+	url = https://github.com/geerlingguy/ansible-role-php.git
+[submodule "php/playbooks/roles/geerlingguy.ansible-role-php-versions"]
+	path = php/playbooks/roles/geerlingguy.php-versions
+	url = https://github.com/geerlingguy/ansible-role-php-versions.git
+[submodule "php/playbooks/roles/geerlingguy.ansible-role-repo-remi"]
+	path = php/playbooks/roles/geerlingguy.repo-remi
+	url = https://github.com/geerlingguy/ansible-role-repo-remi.git
