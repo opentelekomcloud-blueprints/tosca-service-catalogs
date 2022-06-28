@@ -24,7 +24,7 @@ node_types:
         type: string
         description: Set the directory from which httpd will serve files.
         required: true
-        default: "/var/www"
+        default: "/var/www/html"
       allow_override:
         type: string
         required: false
@@ -93,11 +93,6 @@ node_types:
         description: Specify cipher Suite available for negotiation in SSL handshake.
         required: false
         default: "AES256+EECDH:AES256+EDH"
-      remove_default_vhost:
-        type: boolean
-        description: Set to true to remove the default virtualhost configuration file.
-        required: false
-        default: true
       mods_enabled:
         type: list
         entry_schema:
@@ -119,13 +114,11 @@ node_types:
         valid_source_types: [ tosca.nodes.WebApplication ]
       data_endpoint:
         type: otc.capabilities.Apache.Endpoint.Public
-      admin_endpoint:
-        type: tosca.capabilities.Endpoint.Admin
+      data_endpoint_ssl:
+        type: otc.capabilities.Apache.Endpoint.Public
         properties:
-          protocol: tcp
-          port: 9999
+          port: 443
           secure: true
-          initiator: source
     requirements:
       - host:
           capability: tosca.capabilities.Compute
@@ -138,7 +131,7 @@ node_types:
                   properties:
                     - type: { equal: linux }
                     - architecture: { equal: x86_64 }
-                    - distribution: { valid_values: [ debian, rhel, ubuntu, centos, suse, solaris ] }
+                    - distribution: { valid_values: [ debian, rhel, ubuntu, centOS, suse, solaris ] }
     interfaces:
       Standard:
         create:
@@ -146,7 +139,6 @@ node_types:
             APACHE_LISTEN_IP: { get_attribute: [HOST, private_address] }
             DOCUMENT_ROOT: { get_property: [SELF, document_root] }
             DNS_NAME: { get_property: [SELF, data_endpoint, dns_name] }
-            APACHE_REMOVE_DEFAULT_VHOST: { get_property: [SELF, remove_default_vhost] }
             APACHE_ALLOW_OVERRIDE: { get_property: [SELF, allow_override] }
             APACHE_OPTIONS: { get_property: [SELF, options] }
             EXTRA_PARAMETERS: { get_property: [SELF, extra_parameters] }
