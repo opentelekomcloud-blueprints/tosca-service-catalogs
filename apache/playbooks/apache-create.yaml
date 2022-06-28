@@ -7,7 +7,7 @@
     - name: Set Apache ServerName to dns_name
       set_fact:
         SERVER_NAME: "{{ DNS_NAME if DNS_NAME != '' else 'local.dev' }}"
-    - name: Set apache_vhosts
+    - name: Set apache_vhosts no SSL
       set_fact:
         apache_vhosts:
           - servername: "{{ SERVER_NAME }}"
@@ -36,20 +36,26 @@
       when: SSL_ENABLED == 'provided'
     - name: Set apache_vhosts_ssl using auto-genated selfsigned certificate file
       block:
+        - name: Include OS-specific variables.
+          include_vars: "{{ ansible_os_family }}.yml"
+        - name: Create apache group
+          become: true
+          group:
+            name: "{{ web_group }}"
+            state: present
+            system: true
         - name: Create apache cert dir
           become: true
           file:
             path: "/etc/apache2/ssl"
             state: directory
-            owner: "www-data"
-            group: "www-data"
+            owner: root
+            group: "{{ web_group }}"
             mode: 0640
         - name: create private key
           become: true
           openssl_privatekey:
             path: /etc/apache2/ssl/tls.key
-            owner: "www-data"
-            group: "www-data"
           no_log: true
         - name: create csr
           become: true
@@ -66,8 +72,6 @@
             csr_path: /etc/apache2/ssl/tls.csr
             privatekey_path: /etc/apache2/ssl/tls.key
             provider: selfsigned
-            owner: "www-data"
-            group: "www-data"
         - name: Set apache_vhosts_ssl
           set_fact:
             apache_vhosts_ssl:
@@ -123,9 +127,17 @@
         name: geerlingguy.apache
       vars:
         apache_listen_ip: "{{ APACHE_LISTEN_IP }}"
-        apache_remove_default_vhost: "{{ APACHE_REMOVE_DEFAULT_VHOST }}"
+        apache_remove_default_vhost: true
         apache_allow_override: "{{ APACHE_ALLOW_OVERRIDE }}"
         apache_options: "{{ APACHE_OPTIONS }}"
         apache_mods_enabled: "{{ APACHE_MODS_ENABLED }}"
         apache_ssl_protocol: "{{ APACHE_SSL_PROTOCOL }}"
         apache_ssl_cipher_suite: "{{ APACHE_SSL_CIPHER_SUITE }}"
+    - name: Set permission for document root directory
+      become: true
+      file:
+        path: "{{ DOCUMENT_ROOT }}"
+        state: directory
+        recurse: yes
+        owner: "{{ web_user }}"
+        group: "{{ web_group }}"

@@ -98,7 +98,6 @@ topology_template:
         ssl_certificate_chain_file: "/path/to/certificate_chain.crt"
         ssl_protocol: "All -SSLv2 -SSLv3"
         ssl_cipher_suite: "AES256+EECDH:AES256+EDH"
-        remove_default_vhost: true
         mods_enabled:
           - "rewrite.load"
           - "ssl.load"
