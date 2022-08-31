@@ -1,0 +1,14 @@
+# Copyright (C) 2022 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+- name: Prepare Nextcloud config for objectstorage
+  hosts: all
+  strategy: free
+  gather_facts: no
+  tasks:
+    - name: create default config.json in /tmp
+      become: true
+      template:
+        src: "defaults/config.json.j2"
+        dest: /tmp/nextcloud.config.json
+        owner: "www-data"
+        mode: 0640

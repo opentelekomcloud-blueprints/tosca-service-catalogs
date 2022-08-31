@@ -2,17 +2,19 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Nextcloud
-  template_version: 2.0.0
+  template_version: 4.0.0
   template_author: Tri
 
 imports:
-  - otc.servicecatalogs.nextcloud:1.0.0
+  - otc.servicecatalogs.php:1.1.0
   - otc-iaas:1.0.1
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.servicecatalogs.php:1.0.0
   - otc.servicecatalogs.apache:1.0.0
   - otc.servicecatalogs.mysql:1.1.0
+  - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.0
+  - otc.paas.rds:1.0.0
+  - otc.servicecatalogs.nextcloud:1.2.0
 
 topology_template:
   node_templates:
@@ -123,6 +125,13 @@ topology_template:
             port: 80
             secure: false
             initiator: source
+        data_endpoint_ssl:
+          properties:
+            network_name: PUBLIC
+            protocol: tcp
+            port: 443
+            secure: true
+            initiator: source
         admin_endpoint:
           properties:
             secure: true
@@ -134,7 +143,7 @@ topology_template:
       type: otc.nodes.WebApplication.Nextcloud
       properties:
         download_url: "https://download.nextcloud.com/server/releases/latest.tar.bz2"
-        datadir: "/mnt/nc-data"
+        datadir: "/var/www/nextcloud/data"
         admin_user: admin
         mail_configs:
           mail_smtpmode: smtp
@@ -153,11 +162,16 @@ topology_template:
             node: PHP_FPM
             capability: tosca.capabilities.Node
             relationship: otc.relationships.NextcloudDependsOnPHP
-        - nextcloudConnectsToDbMysqldatabaseDatabase_endpoint:
+        - nextcloudConnectsToDbMysqlclientDatabase_endpoint:
             type_requirement: connect_to_mysql_database
-            node: MySQLDatabase
-            capability: otc.capabilities.Endpoint.MySQLDatabase
+            node: MySQLDatabaseConnector
+            capability: otc.capabilities.Endpoint.MySQLConnector
             relationship: otc.relationships.NextcloudConnectsToDb
+        - nextcloudConnectsObjectStorageObjectstorageStorage_endpoint:
+            type_requirement: connect_to_object_storage
+            node: ObjectStorage
+            capability: otc.capabilities.Endpoint.ObjectStorage
+            relationship: otc.relationships.NextcloudConnectsObjectStorage
       capabilities:
         app_endpoint:
           properties:
@@ -204,100 +218,13 @@ topology_template:
         opcache_revalidate_path: 0
         opcache_max_file_size: 0
       requirements:
-        - hostedOnComputeHost:
+        - hostedOnWebServer:
             type_requirement: host
-            node: Compute
-            capability: tosca.capabilities.Compute
-            relationship: tosca.relationships.HostedOn
-        - phpDependsOnWebserverApacheFeature:
-            type_requirement: depends_on_webserver
             node: Apache
-            capability: tosca.capabilities.Node
-            relationship: otc.relationships.PHPDependsOnWebserver
-    Compute_2:
-      metadata:
-        a4c_edit_x: 59
-        a4c_edit_y: "-91"
-      type: tosca.nodes.Compute
-      requirements:
-        - bindsToPort_1Binding:
-            type_requirement: binding
-            node: Port_1
-            capability: tosca.capabilities.network.Bindable
-            relationship: tosca.relationships.network.BindsTo
-      capabilities:
-        host:
-          properties:
-            num_cpus: 1
-            mem_size: "1 GB"
-        os:
-          properties:
-            architecture: "x86_64"
-            type: linux
-            distribution: ubuntu
-            version: 20.04
-        scalable:
-          properties:
-            min_instances: 1
-            max_instances: 1
-            default_instances: 1
-        endpoint:
-          properties:
-            secure: true
-            protocol: tcp
-            network_name: PRIVATE
-            initiator: source
-    Port_1:
-      type: tosca.nodes.network.Port
-      properties:
-        is_default: false
-      requirements:
-        - linksToPrivateLink:
-            type_requirement: link
-            node: Private
-            capability: tosca.capabilities.network.Linkable
-            relationship: tosca.relationships.network.LinksTo
-    MySQLServer:
-      type: otc.nodes.SoftwareComponent.MySQLServer
-      properties:
-        key_buffer_size: 256M
-        max_allowed_packet: 64M
-        table_open_cache: 256
-        sort_buffer_size: 1M
-        read_buffer_size: 1M
-        read_rnd_buffer_size: 4M
-        myisam_sort_buffer_size: 64M
-        thread_cache_size: 8
-        query_cache_type: 0
-        query_cache_size: 16M
-        query_cache_limit: 1M
-        max_connections: 151
-        tmp_table_size: 16M
-        max_heap_table_size: 16M
-        group_concat_max_len: 1024
-        join_buffer_size: 262144
-        innodb_file_per_table: 1
-        innodb_buffer_pool_size: 256M
-        innodb_log_file_size: 64M
-        innodb_log_buffer_size: 8M
-        innodb_flush_log_at_trx_commit: 1
-        innodb_lock_wait_timeout: 50
-        innodb_large_prefix: 1
-        innodb_file_format: barracuda
-        port: 3306
-      requirements:
-        - mySqlVolumeLinuxfilesystemFeature:
-            type_requirement: config_filesystem_as_datadir
-            node: LinuxFileSystem_2
-            capability: tosca.capabilities.Node
-            relationship: otc.relationships.DependsOn.MySqlVolume
-        - hostedOnCompute2Host:
-            type_requirement: host
-            node: Compute_2
-            capability: tosca.capabilities.Compute
-            relationship: tosca.relationships.HostedOn
-    MySQLDatabase:
-      type: otc.nodes.SoftwareComponent.MySQLDatabase
+            capability: otc.capabilities.Container.ApacheHostWebApplication
+            relationship: otc.relationships.PHPHostedOnWebserver
+    MySQLDatabaseConnector:
+      type: otc.nodes.SoftwareComponent.MySQLDatabaseConnector
       properties:
         name: nextcloud
         collation: "utf8mb4_general_ci"
@@ -305,11 +232,16 @@ topology_template:
         user: nextclouduser
         password: asecretpassword
       requirements:
-        - hostedOnMysqlserver2Host:
+        - hostedOnComputeHost:
             type_requirement: host
-            node: MySQLServer
-            capability: tosca.capabilities.Container
+            node: Compute
+            capability: tosca.capabilities.Compute
             relationship: tosca.relationships.HostedOn
+        - connectsToMySqlServerRdsmysqlDatabase_endpoint:
+            type_requirement: connect_to_mysql_server
+            node: RDSMySQL
+            capability: otc.capabilities.Endpoint.MySQLServer
+            relationship: otc.relationships.ConnectsToMySQLServer
       capabilities:
         database_endpoint:
           properties:
@@ -318,68 +250,65 @@ topology_template:
             protocol: tcp
             network_name: PRIVATE
             initiator: source
-    BlockStorage_2:
-      type: tosca.nodes.BlockStorage
+    RDSMySQL:
+      metadata:
+        a4c_edit_x: 84
+        a4c_edit_y: "-88"
+      type: otc.nodes.paas.rds.RDSMySQL
       properties:
-        size: "10 GB"
+        type: MySQL
+        component_version: 8.0
+        root_password: Test123456
+        instance_size: "1vCPU|2GB"
+        volume_type: SATA
+        volume_size: 40
+        backup_keep_days: 7
+        backup_start_time: "01:00-02:00"
+        ha_mode: single
+        availability_zone:
+          - "eu-de-03"
       requirements:
-        - attachToCompute2Attach:
-            type_requirement: attachment
-            node: Compute_2
-            capability: tosca.capabilities.Attachment
-            relationship: tosca.relationships.AttachTo
-    BlockStorage:
-      type: tosca.nodes.BlockStorage
+        - networkPrivateConnection:
+            type_requirement: network
+            node: Private
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+      capabilities:
+        database_endpoint:
+          properties:
+            port: 3306
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+    ObjectStorage:
+      metadata:
+        a4c_edit_x: 87
+        a4c_edit_y: "-22"
+      type: otc.nodes.ObjectStorage
       properties:
-        size: "10 GB"
-      requirements:
-        - attachToComputeAttach:
-            type_requirement: attachment
-            node: Compute
-            capability: tosca.capabilities.Attachment
-            relationship: tosca.relationships.AttachTo
-    LinuxFileSystem_2:
-      type: alien.nodes.LinuxFileSystem
-      properties:
-        fs_type: ext4
-        location: "/mnt"
-      requirements:
-        - linuxPartitionBlockstorageFeature:
-            type_requirement: partition
-            node: BlockStorage_2
-            capability: tosca.capabilities.Node
-            relationship: alien.relationships.LinuxPartition
-        - hostedOnCompute2Host:
-            type_requirement: host
-            node: Compute_2
-            capability: tosca.capabilities.Compute
-            relationship: tosca.relationships.HostedOn
-    LinuxFileSystem:
-      type: alien.nodes.LinuxFileSystem
-      properties:
-        fs_type: ext4
-        location: "/mnt"
-      requirements:
-        - linuxPartitionBlockstorageFeature:
-            type_requirement: partition
-            node: BlockStorage
-            capability: tosca.capabilities.Node
-            relationship: alien.relationships.LinuxPartition
-        - hostedOnComputeHost:
-            type_requirement: host
-            node: Compute
-            capability: tosca.capabilities.Compute
-            relationship: tosca.relationships.HostedOn
+        storage_class: STANDARD
+        bucket_policy: private
+        auto_create_access_key: true
+      capabilities:
+        storage_endpoint:
+          properties:
+            protocol: tcp
+            secure: true
+            network_name: PRIVATE
+            initiator: source
   outputs:
-    Nextcloud_app_url:
-      value: { get_attribute: [ Nextcloud, app_url ] }
     Nextcloud_admin_user:
       value: { get_property: [ Nextcloud, admin_user ] }
+    Nextcloud_app_url:
+      value: { get_attribute: [ Nextcloud, app_url ] }
     Nextcloud_admin_password:
       value: { get_attribute: [ Nextcloud, admin_password ] }
     Compute_private_address:
       value: { get_attribute: [ Compute, private_address ] }
     Compute_public_address:
       value: { get_attribute: [ Compute, public_address ] }
+    MySQLDatabaseConnector_mysql_server_ip_address:
+      value: { get_attribute: [ MySQLDatabaseConnector, mysql_server_ip_address ] }
     Apache_data_endpoint_dns_name:
       value: { get_property: [ Apache, data_endpoint, dns_name ] }

@@ -4,13 +4,14 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.nextcloud
-  template_version: 1.0.0
+  template_version: 1.2.0
   template_author: Tri
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.apache:1.0.0
-  - otc.servicecatalogs.php:1.0.0
+  - otc.servicecatalogs.php:1.1.0
+  - otc.iaas.obs:1.0.0
 
 data_types:
   otc.datatypes.NextCloudMailConfig:
@@ -139,6 +140,11 @@ node_types:
           node: tosca.nodes.Database
           relationship: otc.relationships.NextcloudConnectsToDb
           occurrences: [1, 1]
+      - connect_to_object_storage:
+          capability: otc.capabilities.Endpoint.ObjectStorage
+          node: otc.nodes.ObjectStorage
+          relationship: otc.relationships.NextcloudConnectsObjectStorage
+          occurrences: [0, 1]
     interfaces:
       Standard:
         create:
@@ -191,6 +197,20 @@ relationship_types:
             MYSQL_USER: { get_property: [TARGET, user] }
             MYSQL_PASSWORD: { get_property: [TARGET, password] }
           implementation: playbooks/nextcloud-post-configure-source.yaml
+
+  otc.relationships.NextcloudConnectsObjectStorage:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        description: Start installing nextcloud using CLI and connect to MySQL database
+        post_configure_source:
+          inputs:
+            ACCESS_KEY: { get_property: [TARGET, access_key] }
+            SECRET_KEY: { get_property: [TARGET, secret_key] }
+            BUCKET_ID: { get_attribute: [TARGET, bucket_id] }
+            BUCKET_DOMAIN_NAME: { get_attribute: [TARGET, bucket_domain_name] }
+            REGION: { get_attribute: [TARGET, region] }
+          implementation: playbooks/nextcloud-post-configure-obs.yaml
 
 capability_types:
   otc.capabilities.Endpoint.Nextcloud:
