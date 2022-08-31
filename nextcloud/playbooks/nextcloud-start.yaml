@@ -7,6 +7,22 @@
   vars_files:
     - vars/main.yml
   tasks:
+    - name: "Check if default config exists"
+      stat:
+        path: "/tmp/nextcloud.config.json"
+      register: result
+    - name: Import default config in Nextcloud
+      become: true
+      become_user: "www-data"
+      shell: php --define apc.enable_cli=1 occ config:import /tmp/nextcloud.config.json
+      args:
+        chdir: "{{ DOCUMENT_ROOT }}"
+      when: result.stat.exists
+    - name: Remove config in /tmp
+      become: true
+      file:
+        name: /tmp/nextcloud.config.json
+        state: absent
     - name: Set trusted domain
       set_fact:
         TRUSTED_DOMAIN: "{{ DNS_NAME if DNS_NAME != '' else 'localhost' }}"

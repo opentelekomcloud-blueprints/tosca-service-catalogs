@@ -1,0 +1,17 @@
+{
+    "system": {
+        "objectstore": {
+            "class": "\\OC\\Files\\ObjectStore\\S3",
+            "arguments": {
+                "bucket": "{{ BUCKET_ID }}",
+                "autocreate": true,
+                "key": "{{ ACCESS_KEY }}",
+                "secret": "{{ SECRET_KEY }}",
+                "hostname": "{{ BUCKET_DOMAIN_NAME.split('.', 1)[1] }}",
+                "port": 443,
+                "use_ssl": true,
+                "region": "{{ REGION }}"
+            }
+        }
+    }
+}

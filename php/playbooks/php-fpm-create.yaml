@@ -36,13 +36,12 @@
       set_fact:
         php_opcache_enable: "0"
       when: PHP_OPCACHE_ENABLE == 'false'
-    - name: Check packages
-      package_facts:
-        manager: auto
+    - name: Gathering service facts
+      service_facts:
     - name: Found nginx, set php_webserver_daemon to nginx
       set_fact:
         php_webserver_daemon: nginx
-      when: "'nginx' in ansible_facts.packages"
+      when: "'nginx' in ansible_facts.services"
     - name: Define PHP repo for RedHat OS family
       include_role:
         name: geerlingguy.repo-remi
@@ -73,4 +72,4 @@
         when: mod_proxy_fcgi.changed
       when:
         - ansible_os_family == 'Debian'
-        - "'apache2' in ansible_facts.packages"
+        - "'apache2' in ansible_facts.services"

@@ -13,7 +13,7 @@
         owner: "www-data"
         group: "www-data"
         mode: "0755"
-    - name: Download nextcloud archive. Timeout after 10 minutes.
+    - name: Download nextcloud archive. Timeout after 15 minutes.
       get_url:
         url:  "{{ DOWNLOAD_URL }}"
         dest: /tmp/nextcloud.tar.bz2
