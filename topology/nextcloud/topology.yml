@@ -13,7 +13,7 @@ imports:
   - otc.servicecatalogs.mysql:1.1.0
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.0
-  - otc.paas.rds:1.0.0
+  - otc.paas.rds:1.0.1
   - otc.servicecatalogs.nextcloud:1.2.0
 
 topology_template:
@@ -258,7 +258,7 @@ topology_template:
       properties:
         type: MySQL
         component_version: 8.0
-        root_password: Test123456
+        root_password: Test123456!
         instance_size: "1vCPU|2GB"
         volume_type: SATA
         volume_size: 40
@@ -290,6 +290,7 @@ topology_template:
         storage_class: STANDARD
         bucket_policy: private
         auto_create_access_key: true
+        force_destroy: true
       capabilities:
         storage_endpoint:
           properties:
