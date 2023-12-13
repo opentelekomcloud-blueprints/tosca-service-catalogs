@@ -1,0 +1,44 @@
+- name: Setup nginx and copy ignition files to /var/www/html
+  hosts: all
+  gather_facts: no
+  become: true
+  strategy: free
+  vars:
+    openshift_dir: "/home/ubuntu/openshift"
+  tasks:
+    - name: Install nginx
+      package:
+        name: nginx
+        state: present
+    - name: Copy ignition files to /var/www/html
+      copy:
+        remote_src: true
+        src: '{{item}}'
+        dest: '/var/www/html'
+        owner: 'www-data'
+        group: 'www-data'
+        mode: 0640
+      loop:
+        - "{{ openshift_dir }}/bootstrap.ign"
+        - "{{ openshift_dir }}/master-0.ign"
+        - "{{ openshift_dir }}/master-1.ign"
+        - "{{ openshift_dir }}/master-2.ign"
+        - "{{ openshift_dir }}/worker.ign"
+    - name: Remove ignition files in /home/ubuntu/openshift
+      file:
+        path: '{{item}}'
+        state: absent
+      loop:
+        - "{{ openshift_dir }}/bootstrap.ign"
+        - "{{ openshift_dir }}/master-0.ign"
+        - "{{ openshift_dir }}/master-1.ign"
+        - "{{ openshift_dir }}/master-2.ign"
+        - "{{ openshift_dir }}/worker.ign"
+    - name: Test nginx returns ignition files
+      uri:
+        url: "http://localhost/worker.ign"
+        method: GET
+        status_code: 200
+        return_content: no
+      register: this
+      failed_when: this is failed

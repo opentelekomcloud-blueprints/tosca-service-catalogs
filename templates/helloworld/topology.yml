@@ -1,0 +1,117 @@
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: HelloWorld
+  template_version: 1.0.5
+  template_author: Dr. Tri Vo
+  template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/bash/bash_create.html"
+  template_images:
+    - /images/thumbnail.png
+    - /images/image1.png
+    - /images/image2.png
+    - /images/image3.png
+
+description: >
+  This template deploys Nginx on a public compute using the Bash script component.
+  Access the public IP address on port 80 will print out a Hello World.
+
+imports:
+  - otc-iaas:1.0.3
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.paas.scripts.ansible.tasks:1.0.0
+  - otc.paas.scripts:1.1.0
+  - otc.paas.scripts.common:1.0.0
+
+topology_template:
+  node_templates:
+    Private:
+      metadata:
+        a4c_edit_x: "-3"
+        a4c_edit_y: "-21"
+      type: otc.nodes.Network.Private
+      properties:
+        admin_network: false
+        cidr: "10.0.0.0/24"
+        ip_version: 4
+    Public:
+      metadata:
+        a4c_edit_x: "-266"
+        a4c_edit_y: "-124"
+      type: otc.nodes.Network.Public
+      properties:
+        ip_version: 4
+    Compute:
+      metadata:
+        a4c_edit_x: "-276"
+        a4c_edit_y: "-89"
+      type: otc.nodes.Compute
+      requirements:
+        - bindsToPortBinding:
+            type_requirement: binding
+            node: Port
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+      capabilities:
+        host:
+          properties:
+            num_cpus: 1
+            mem_size: "1 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: ubuntu
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Port:
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.2"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - linksToPublicLink:
+            type_requirement: link
+            node: Public
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+    Nginx:
+      type: otc.nodes.SoftwareComponent.Bash
+      properties:
+        component_version: 1.0
+      requirements:
+        - hostedOnComputeHost:
+            type_requirement: host
+            node: Compute
+            capability: tosca.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        data_endpoint:
+          properties:
+            protocol: tcp
+            port: 80
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+      artifacts:
+        configure:
+          file: nginx1.sh
+          type: tosca.artifacts.Implementation.Bash
+  outputs:
+    Compute_private_address:
+      value: { get_attribute: [ Compute, private_address ] }
+    Compute_public_address:
+      value: { get_attribute: [ Compute, public_address ] }
