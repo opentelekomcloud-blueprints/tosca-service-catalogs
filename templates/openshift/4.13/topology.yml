@@ -1,0 +1,1391 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: OpenShift
+  template_version: 4.13.19
+  template_author: Dr. Tri Vo
+  template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/openshift.html"
+  template_images:
+    - /images/thumbnail.png
+    - /images/image1.png
+    - /images/image2.png
+    - /images/image3.png
+    - /images/image4.png
+
+description: >
+  This template deploys a Self-managed OpenShift Container Platform on Open Telekom Cloud with worker nodes in one availability zone.
+  To deploy worker nodes in three availability zones, use the template OpenStack HA.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - yorc-types:1.1.4
+  - otc.paas.scripts.ansible.tasks:1.1.0
+  - otc-iaas:1.0.3
+  - otc-yorc:1.0.0
+  - otc.servicecatalogs.openshift:1.0.2
+  - otc.paas.scripts.common:1.0.0
+
+topology_template:
+  inputs:
+    ssh_public_key:
+      type: string
+      required: false
+      constraints:
+        - pattern: "ssh-(ed25519|rsa|dss|ecdsa) AAAA(?:[A-Za-z0-9+\\/]{4})*(?:[A-Za-z0-9+\\/]{2}==|[A-Za-z0-9+\\/]{3}=|[A-Za-z0-9+\\/]{4})( [^@]+@[^@]+)?"
+      description: "Specify the SSH public key so that you can SSH to the Bastionhost, OpenShift control, and worker nodes after the deployment. If not specified, we will auto-select one keypair from the user who deploys the application. If ssh_public_key is not set and the user has no keypair, we will display an error before the deployment can start."
+    base_domain:
+      type: string
+      required: true
+      constraints:
+        - pattern: "^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$"
+      description: "Specify the base domain for the OpenShift cluster <example.com>. The DNS must be globally unique in the Domain Name Service of Open Telekom Cloud. After the deployment completes, a DNS public zone will be created in the Domain Name Service and users can access the OpenShift console with this domain name."
+    cluster_name:
+      type: string
+      required: true
+      default: openshift
+      constraints:
+        - pattern: "[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?"
+      description: "Specify the cluster name <openshift>"
+    number_workers:
+      type: integer
+      required: true
+      default: 2
+      constraints:
+        - greater_or_equal: 2
+      description: "Specify how many worker nodes to create. OpenShift requires minimum 2 worker nodes to setup all operators."
+    nat_gateway_spec:
+      type: string
+      required: true
+      default: Small
+      constraints:
+        - valid_values: [Micro, Small, Medium, Large, "Extra-large"]
+      description: "The specification of the NAT Gateway. 'Micro' supports up to 1,000 SNAT connections. 'Small' supports up to 10,000 SNAT connections. 'Medium' supports up to 50,000 SNAT connections. 'Large' supports up to 200,000 SNAT connections. 'Extra-large' supports up to 1,000,000 SNAT connections."
+    worker_num_cpus:
+      type: integer
+      required: false
+      default: 4
+      constraints:
+        - greater_or_equal: 4
+        - valid_values: [4, 8, 16, 32]
+      description: "Number of CPUs associated with the worker node. OpenShift requires minimum 4 vCPUs for worker node."
+    worker_mem_size:
+      type: scalar-unit.size
+      required: false
+      default: "16 GB"
+      constraints:
+        - greater_or_equal: 16 GB
+        - valid_values: ["16 GB", "32 GB", "64 GB", "128 GB", "256 GB"]
+      description: "Size of memory associated with the worker node. OpenShift requires minimum 16 GB for worker node."
+  node_templates:
+    Private:
+      metadata:
+        a4c_edit_x: "-516"
+        a4c_edit_y: "-131"
+      type: otc.nodes.Network.Private
+      properties:
+        admin_network: false
+        cidr: "10.0.0.0/16"
+        start_ip: "10.0.0.20"
+        end_ip: "10.0.255.254"
+        ip_version: 4
+    Public:
+      metadata:
+        a4c_edit_x: "-700"
+        a4c_edit_y: "-274"
+      type: otc.nodes.Network.Public
+      properties:
+        ip_version: 4
+    OpenShiftInstall:
+      type: otc.nodes.SoftwareComponent.OpenShiftInstall
+      properties:
+        component_version: "4.13.19"
+        base_domain: { get_input: base_domain }
+        cluster_name: { get_input: cluster_name }
+        cluster_network: "10.128.0.0/14"
+        machine_network: "10.0.0.0/16"
+        service_network: "172.30.0.0/16"
+        network_type: OVNKubernetes
+        openshift_install_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.19/openshift-install-linux.tar.gz"
+        cluster_os_image: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        pull_secret: { get_secret: [pull_secret] }
+        os_password: { get_secret: [os_password] }
+        ssh_public_key: { get_input: ssh_public_key }
+      requirements:
+        - hostedOnComputeHost:
+            type_requirement: host
+            node: Bastionhost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+        - openShiftInstallConfigVipApivipVip:
+            type_requirement: api_vip
+            node: API_VIP
+            capability: otc.capabilities.port.VirtualIP
+            relationship: otc.relationships.openshift.OpenShiftInstallConfigVip
+    API_VIP:
+      metadata:
+        a4c_edit_x: "-404"
+        a4c_edit_y: "-165"
+      type: otc.nodes.Network.Port.VirtualIP
+      properties:
+        dns_name:
+          domain: { get_input: base_domain }
+          subdomain: { concat: [ "api.", { get_input: cluster_name }, ".", { get_input: base_domain } ] }
+        is_default: false
+        ip_address: "10.0.0.5"
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - linksToPublicLink:
+            type_requirement: link
+            node: Public
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnBootstrapport0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Bootstrap_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnMaster1port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_1_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnMaster2port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_2_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnMaster0port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_0_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnSgmasterFeature:
+            type_requirement: dependency
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Bastionhost:
+      metadata:
+        a4c_edit_x: "-644"
+        a4c_edit_y: "-81"
+      type: otc.nodes.Compute
+      properties:
+        availability_zone: "eu-de-01"
+      requirements:
+        - bindsToCompute_Port_0Binding:
+            type_requirement: binding
+            node: Bastionhost_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 1
+            mem_size: "1 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: ubuntu
+            version: 22.04
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            port: 22
+            network_name: PRIVATE
+            initiator: source
+    Master_0:
+      metadata:
+        a4c_edit_x: 120
+        a4c_edit_y: "-83"
+      type: otc.nodes.Compute
+      properties:
+        user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-0.ign\" } ] }, \"version\": \"3.1.0\" } }"
+        availability_zone: "eu-de-01"
+      requirements:
+        - bindsToCompute_2_Port_0Binding:
+            type_requirement: binding
+            node: Master_0_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 4
+            mem_size: "16 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: rhel
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Master_1:
+      metadata:
+        a4c_edit_x: 367
+        a4c_edit_y: "-83"
+      type: otc.nodes.Compute
+      properties:
+        user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-1.ign\" } ] }, \"version\": \"3.1.0\" } }"
+        availability_zone: "eu-de-02"
+      requirements:
+        - bindsToMaster_1_Port_0Binding:
+            type_requirement: binding
+            node: Master_1_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 4
+            mem_size: "16 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: rhel
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Master_2:
+      metadata:
+        a4c_edit_x: 603
+        a4c_edit_y: "-83"
+      type: otc.nodes.Compute
+      properties:
+        user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-2.ign\" } ] }, \"version\": \"3.1.0\" } }"
+        availability_zone: "eu-de-03"
+      requirements:
+        - bindsToMaster_2_Port_0Binding:
+            type_requirement: binding
+            node: Master_2_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 4
+            mem_size: "16 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: rhel
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Master_1_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.13"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgmasterFeature:
+            type_requirement: dependency
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Master_2_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.14"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgmasterFeature:
+            type_requirement: dependency
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Bastionhost_Port_0:
+      metadata:
+        a4c_edit_x: "-645"
+        a4c_edit_y: "-127"
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.10"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - linksToPublicLink:
+            type_requirement: link
+            node: Public
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgbastionhostFeature:
+            type_requirement: dependency
+            node: sg_bastionhost
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Bootstrap:
+      metadata:
+        a4c_edit_x: "-167"
+        a4c_edit_y: "-82"
+      type: otc.nodes.Compute
+      properties:
+        user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/bootstrap.ign\" } ] }, \"version\": \"3.1.0\" } }"
+        availability_zone: "eu-de-01"
+      requirements:
+        - bindsToBootstrap_Port_0Binding:
+            type_requirement: binding
+            node: Bootstrap_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 4
+            mem_size: "16 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: rhel
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Bootstrap_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.11"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgmasterFeature:
+            type_requirement: dependency
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    INGRESS_VIP:
+      metadata:
+        a4c_edit_x: 843
+        a4c_edit_y: "-165"
+      type: otc.nodes.Network.Port.VirtualIP
+      properties:
+        dns_name:
+          domain: { get_input: base_domain }
+          subdomain: { concat: [ "*.apps.", { get_input: cluster_name }, ".", { get_input: base_domain } ] }
+        is_default: false
+        ip_address: "10.0.0.7"
+      requirements:
+        - dependsOnMaster1port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_1_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnMaster2port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_2_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - dependsOnMaster0port0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Master_0_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnWorkersport0Allowed_address_pairs:
+            type_requirement: network_ports
+            node: Workers_Port_0
+            capability: otc.capabilities.network.Port
+            relationship: tosca.relationships.DependsOn
+        - linksToPublicLink:
+            type_requirement: link
+            node: Public
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgworkerFeature:
+            type_requirement: dependency
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Workers:
+      metadata:
+        a4c_edit_x: 1086
+        a4c_edit_y: "-86"
+      type: otc.nodes.Compute
+      properties:
+        user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/worker.ign\" } ] }, \"version\": \"3.1.0\" } }"
+      requirements:
+        - bindsToCompute_Port_0Binding:
+            type_requirement: binding
+            node: Workers_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: { get_input: worker_num_cpus }
+            mem_size: { get_input: worker_mem_size }
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: rhel
+        scalable:
+          properties:
+            min_instances: 2
+            max_instances: 100
+            default_instances: { get_input: number_workers }
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Workers_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgworkerFeature:
+            type_requirement: dependency
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    Bootstrap_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        volume_type: SSD
+        size: "100 GB"
+      requirements:
+        - attachToBootstrapAttach:
+            type_requirement: attachment
+            node: Bootstrap
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    Master_0_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        volume_type: SSD
+        size: "120 GB"
+      requirements:
+        - attachToMaster0Attach:
+            type_requirement: attachment
+            node: Master_0
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    Master_1_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        volume_type: SSD
+        size: "120 GB"
+      requirements:
+        - attachToMaster1Attach:
+            type_requirement: attachment
+            node: Master_1
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    Master_2_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        volume_type: SSD
+        size: "120 GB"
+      requirements:
+        - attachToMaster2Attach:
+            type_requirement: attachment
+            node: Master_2
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    Workers_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "rhcos-413.92.202307260246-0-openstack.x86_64"
+        volume_type: SSD
+        size: "120 GB"
+      requirements:
+        - attachToWorkersAttach:
+            type_requirement: attachment
+            node: Workers
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    Master_0_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        ip_address: "10.0.0.12"
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgmasterFeature:
+            type_requirement: dependency
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    sg_bastionhost:
+      metadata:
+        a4c_edit_x: "-640"
+        a4c_edit_y: 268
+      type: yorc.nodes.SecurityGroup
+      properties:
+        name: "sg-bastionhost"
+        delete_default_rules: false
+    sg_master:
+      metadata:
+        a4c_edit_x: "-405"
+        a4c_edit_y: 269
+      type: yorc.nodes.SecurityGroup
+      properties:
+        name: "sg-master"
+        delete_default_rules: false
+    sg_worker:
+      metadata:
+        a4c_edit_x: "-168"
+        a4c_edit_y: 269
+      type: yorc.nodes.SecurityGroup
+      properties:
+        name: "sg-worker"
+        delete_default_rules: false
+    rule_ssh:
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 22
+        to_port: 22
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgbastionhostHost:
+            type_requirement: host_on_security_group
+            node: sg_bastionhost
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_nginx_master:
+      metadata:
+        a4c_edit_x: "-730"
+        a4c_edit_y: 391
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 80
+        to_port: 80
+        remote: "sg-master"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgbastionhostHost:
+            type_requirement: host_on_security_group
+            node: sg_bastionhost
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_nginx_worker:
+      metadata:
+        a4c_edit_x: "-730"
+        a4c_edit_y: 391
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 80
+        to_port: 80
+        remote: "sg-worker"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgbastionhostHost:
+            type_requirement: host_on_security_group
+            node: sg_bastionhost
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_machine_config_server:
+      metadata:
+        a4c_edit_x: "-366"
+        a4c_edit_y: 276
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 22623
+        to_port: 22623
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_master_ssh:
+      metadata:
+        a4c_edit_x: "-364"
+        a4c_edit_y: 337
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 22
+        to_port: 22
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_dns_tcp:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 395
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 53
+        to_port: 53
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_dns_udp:
+      metadata:
+        a4c_edit_x: "-368"
+        a4c_edit_y: 455
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 53
+        to_port: 53
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_api:
+      metadata:
+        a4c_edit_x: "-368"
+        a4c_edit_y: 223
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 6443
+        to_port: 6443
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_vxlan:
+      metadata:
+        a4c_edit_x: "-366"
+        a4c_edit_y: 515
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 4789
+        to_port: 4789
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_geneve:
+      metadata:
+        a4c_edit_x: "-366"
+        a4c_edit_y: 515
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 6081
+        to_port: 6081
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ipsec_ike:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 575
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 500
+        to_port: 500
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ipsec_nat_t:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 634
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 4500
+        to_port: 4500
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ovndb:
+      metadata:
+        a4c_edit_x: "-368"
+        a4c_edit_y: 693
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 6641
+        to_port: 6642
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_internal_tcp:
+      metadata:
+        a4c_edit_x: "-368"
+        a4c_edit_y: 693
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 9000
+        to_port: 9999
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_internal_udp:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 755
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 9000
+        to_port: 9999
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_kube_scheduler:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 813
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 10259
+        to_port: 10259
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_kube_controller_manager:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 871
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 10257
+        to_port: 10257
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_kubelet_secure:
+      metadata:
+        a4c_edit_x: "-370"
+        a4c_edit_y: 931
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 10250
+        to_port: 10250
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_etcd:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 993
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 2379
+        to_port: 2380
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_services_tcp:
+      metadata:
+        a4c_edit_x: "-369"
+        a4c_edit_y: 1052
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 30000
+        to_port: 32767
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_services_udp:
+      metadata:
+        a4c_edit_x: "-369"
+        a4c_edit_y: 1113
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 30000
+        to_port: 32767
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_vrrp:
+      metadata:
+        a4c_edit_x: "-367"
+        a4c_edit_y: 1184
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: 112
+        direction: inbound
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_master_icmp:
+      metadata:
+        a4c_edit_x: "-366"
+        a4c_edit_y: 276
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: icmp
+        direction: inbound
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgmasterHost:
+            type_requirement: host_on_security_group
+            node: sg_master
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_worker_icmp:
+      metadata:
+        a4c_edit_x: "-163"
+        a4c_edit_y: 228
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: icmp
+        direction: inbound
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_worker_ssh:
+      metadata:
+        a4c_edit_x: "-163"
+        a4c_edit_y: 288
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 22
+        to_port: 22
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_http:
+      metadata:
+        a4c_edit_x: "-161"
+        a4c_edit_y: 346
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 80
+        to_port: 80
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_https:
+      metadata:
+        a4c_edit_x: "-161"
+        a4c_edit_y: 409
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 443
+        to_port: 443
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_router:
+      metadata:
+        a4c_edit_x: "-163"
+        a4c_edit_y: 467
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 1936
+        to_port: 1936
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_geneve_worker:
+      metadata:
+        a4c_edit_x: "-161"
+        a4c_edit_y: 591
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 6081
+        to_port: 6081
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_vxlan_worker:
+      metadata:
+        a4c_edit_x: "-165"
+        a4c_edit_y: 532
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 4789
+        to_port: 4789
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ipsec_ike_worker:
+      metadata:
+        a4c_edit_x: "-160"
+        a4c_edit_y: 655
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 500
+        to_port: 500
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ipsec_nat_t_worker:
+      metadata:
+        a4c_edit_x: "-158"
+        a4c_edit_y: 717
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 4500
+        to_port: 4500
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_internal_tcp_worker:
+      metadata:
+        a4c_edit_x: "-157"
+        a4c_edit_y: 782
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 9000
+        to_port: 9999
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_internal_udp_worker:
+      metadata:
+        a4c_edit_x: "-158"
+        a4c_edit_y: 852
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 9000
+        to_port: 9999
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_kubelet_secure_worker:
+      metadata:
+        a4c_edit_x: "-163"
+        a4c_edit_y: 912
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 10250
+        to_port: 10250
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_services_tcp_worker:
+      metadata:
+        a4c_edit_x: "-160"
+        a4c_edit_y: 970
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        direction: inbound
+        from_port: 30000
+        to_port: 32767
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_ingress_services_udp_worker:
+      metadata:
+        a4c_edit_x: "-160"
+        a4c_edit_y: 1030
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        direction: inbound
+        from_port: 30000
+        to_port: 32767
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    rule_vrrp_worker:
+      metadata:
+        a4c_edit_x: "-158"
+        a4c_edit_y: 1093
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        protocol: 112
+        direction: inbound
+        remote: "10.0.0.0/16"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgworkerHost:
+            type_requirement: host_on_security_group
+            node: sg_worker
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    OpenShiftClient:
+      type: otc.nodes.SoftwareComponent.Ansible.AnsibleTasks
+      properties:
+        ansible_become: false
+        ignore_errors: true
+      requirements:
+        - dependsOnOpenshiftinstallFeature:
+            type_requirement: dependency
+            node: OpenShiftInstall
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: Bastionhost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        data_endpoint:
+          properties:
+            env:
+              openshift_dir: "/home/ubuntu/openshift"
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+      artifacts:
+        configure:
+          file: artifacts/openshiftclient_configure.yml
+          type: otc.artifacts.AnsibleTasksYmlFile
+    NATGateway:
+      metadata:
+        a4c_edit_x: "-939"
+        a4c_edit_y: "-82"
+      type: otc.nodes.Network.NATGateway
+      properties:
+        spec: { get_input: nat_gateway_spec }
+      requirements:
+        - networkPrivateConnection:
+            type_requirement: network
+            node: Private
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+    SNATRule:
+      type: otc.nodes.Network.SNATRule
+      requirements:
+        - hostedOnNatgatewayRules:
+            type_requirement: nat_gateway
+            node: NATGateway
+            capability: otc.capabilities.Container.NATRules
+            relationship: tosca.relationships.HostedOn
+    Bastionhost_BootVolume:
+      type: otc.nodes.BlockStorage.BootVolume
+      properties:
+        image_name: "Standard_Ubuntu_22.04_latest"
+        volume_type: SATA
+        size: "50 GB"
+      requirements:
+        - attachToBastionhostAttach:
+            type_requirement: attachment
+            node: Bastionhost
+            capability: tosca.capabilities.Attachment
+            relationship: tosca.relationships.AttachTo
+    CheckOpenShiftStatus:
+      type: otc.nodes.SoftwareComponent.Ansible.AnsibleTasks
+      properties:
+        ansible_become: false
+        ignore_errors: false
+        wait_for: 1860
+      requirements:
+        - dependsOnOpenshiftclientFeature:
+            type_requirement: dependency
+            node: OpenShiftClient
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: Bastionhost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        data_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+      artifacts:
+        configure:
+          file: artifacts/checkstatus_configure.yml
+          type: otc.artifacts.AnsibleTasksYmlFile
+  outputs:
+    OpenShiftInstall_info:
+      value: { get_attribute: [ OpenShiftInstall, info ] }
+    OpenShiftInstall_console_hostname:
+      value: { get_attribute: [ OpenShiftInstall, console_hostname ] }
+    OpenShiftInstall_oauth_hostname:
+      value: { get_attribute: [ OpenShiftInstall, oauth_hostname ] }
+    INGRESS_VIP_public_address:
+      value: { get_attribute: [ INGRESS_VIP, public_address ] }
+    OpenShiftInstall_infra_id:
+      value: { get_attribute: [ OpenShiftInstall, infra_id ] }
+    OpenShiftInstall_kubeadmin_password:
+      value: { get_attribute: [ OpenShiftInstall, kubeadmin_password ] }
+    OpenShiftInstall_console_url:
+      value: { get_attribute: [ OpenShiftInstall, console_url ] }
+    OpenShiftInstall_kubeadmin_username:
+      value: { get_attribute: [ OpenShiftInstall, kubeadmin_username ] }
+    Workers_private_address:
+      value: { get_attribute: [ Workers, private_address ] }
+    Bastionhost_public_address:
+      value: { get_attribute: [ Bastionhost, public_address ] }

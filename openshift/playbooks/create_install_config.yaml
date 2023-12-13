@@ -1,0 +1,67 @@
+- name: Setup Bastionhost
+  hosts: all
+  strategy: free
+  vars:
+    api_floating_ip: "{{ API_FLOATING_IP }}"
+    api_vip: "{{ API_VIP }}"
+    base_domain: "{{ BASE_DOMAIN }}"
+    cluster_name: "{{ CLUSTER_NAME }}"
+    cluster_network: "{{ CLUSTER_NETWORK }}"
+    machine_network: "{{ MACHINE_NETWORK }}"
+    service_network: "{{ SERVICE_NETWORK }}"
+    network_type: "{{ NETWORK_TYPE }}"
+    cluster_os_image: "{{ CLUSTER_OS_IMAGE }}"
+    pull_secret: "{{ PULL_SECRET }}"
+    os_user_domain_name: "{{ OS_USER_DOMAIN_NAME }}"
+    os_project_name: "{{ OS_PROJECT_NAME }}"
+    os_username: "{{ OS_USERNAME }}"
+    os_password: "{{ OS_PASSWORD }}"
+    ssh_public_key: "{{ SSH_PUBLIC_KEY }}"
+    openshift_dir: "/home/ubuntu/openshift"
+  tasks:
+    - name: Create openshift dir
+      file:
+        path: "{{ openshift_dir }}"
+        state: directory
+        #mode: 0640
+    - name: Create install-config.yaml
+      template:
+        src: install-config.j2
+        dest: "{{ openshift_dir }}/install-config.yaml"
+        mode: 0640
+    - name: Download openshift-install
+      get_url:
+        url: "{{ OPENSHIFT_INSTALL_URL }}"
+        dest: "{{ openshift_dir }}/openshift-install-linux.tar.gz"
+        mode: 0640
+    - name: Unarchive openshift-install
+      ansible.builtin.unarchive:
+        src: "{{ openshift_dir }}/openshift-install-linux.tar.gz"
+        dest: "{{ openshift_dir }}"
+        remote_src: yes
+    - name: Create clouds.yml
+      template:
+        src: clouds.j2
+        dest: "{{ openshift_dir }}/clouds.yml"
+        mode: 0640
+    - name: Add OpenShift API domain to /etc/hosts
+      become: true
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {{ api_vip }} api.{{ cluster_name }}.{{ base_domain }}
+    - name: Create openshift_checks.sh
+      template:
+        src: openshift_checks.sh
+        dest: "{{ openshift_dir }}"
+        mode: 0755
+    - name: Add Cron Job to check openshift installation status and approve worker nodes
+      become: true
+      cron:
+        name: "openshift_checks_cron"
+        minute: "*/1"
+        hour: "*"
+        job: "{{ openshift_dir }}/openshift_checks.sh"
+        cron_file: "/etc/cron.d/openshift_checks_cron"
+        user: "{{ ansible_user }}"
+        state: present

@@ -1,0 +1,185 @@
+# Copyright (C) 2021 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.openshift
+  template_version: 1.0.2
+  template_author: Tri
+
+description: Openshift
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc-iaas:1.0.3
+
+node_types:
+  otc.nodes.SoftwareComponent.OpenShiftInstall:
+    derived_from: tosca.nodes.SoftwareComponent
+    tags:
+      icon: /images/openshift.png
+    description: Put this component on a bastion host to download the openshift-install and generate the ignition files.
+    attributes:
+      infra_id: { get_operation_output: [SELF, Standard, configure, INFRA_ID]}
+      console_url: { concat: ["https://console-openshift-console.apps.", get_property: [SELF, cluster_name], ".", get_property: [SELF, base_domain] ] }
+      console_hostname: { concat: ["console-openshift-console.apps.", get_property: [SELF, cluster_name], ".", get_property: [SELF, base_domain] ] }
+      oauth_hostname: { concat: ["oauth-openshift.apps.", get_property: [SELF, cluster_name], ".", get_property: [SELF, base_domain] ] }
+      info:
+        type: string
+        description: Useful information to display to the users after the deployment completes.
+        default: >
+          After the deployment completes, to access the 'console_url' via the web browser, add the 'console_hostname' and the 'oauth_hostname' resolved to the 'INGRESS_VIP' in your /etc/hosts.
+      kubeadmin_username:
+        type: string
+        description: The default username to login to OpenShift console for administration.
+        default: kubeadmin
+      kubeadmin_password: { get_operation_output: [SELF, Standard, configure, KUBEADMIN_PASSWORD]}
+    properties:
+      component_version:
+        type: version
+        description: Display the supported version of OpenShift (>= 4.12.x).
+        default: 4.12.39
+        constraints:
+          - greater_or_equal: 4.12
+      base_domain:
+        type: string
+        constraints:
+          - pattern: "^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$"
+        description: >
+          Specify the base domain for the OpenShift cluster <example.com>.
+          The DNS must be globally unique in the Domain Name Service of Open Telekom Cloud.
+          After the deployment completes, a DNS public zone will be created in the Domain Name Service and users can access the OpenShift console with this domain name.
+        required: true
+      cluster_name:
+        type: string
+        constraints:
+          - pattern: '[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?'
+        description: >
+          Specify the cluster name <openshift>
+        default: openshift
+        required: true
+      cluster_network:
+        type: string
+        description: >
+          The IP address blocks for pods. The default value is '10.128.0.0/14' with a host prefix of '/23'.
+        required: true
+        default: 10.128.0.0/14
+      machine_network:
+        type: string
+        description: >
+          The IP address blocks for machines.
+        required: true
+        default: 10.0.0.0/16
+      service_network:
+        type: string
+        description: >
+          The IP address block for services. The default value is '172.30.0.0/16'.
+        required: true
+        default: 172.30.0.0/16
+      network_type:
+        type: string
+        constraints:
+          - valid_values: ['OVNKubernetes'] # 'OpenShiftSDN' not tested
+        description: >
+          The Red Hat OpenShift Networking network plugin to install. The default value is 'OVNKubernetes'.
+        required: true
+        default: OVNKubernetes
+      openshift_install_url:
+        type: string
+        description: >
+          The URL to download the openshift-install.
+        required: true
+        default: 'https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.13/openshift-install-linux.tar.gz'
+      cluster_os_image:
+        type: string
+        description: >
+          The RHCOS image name set in the install-config.yaml. # Not sure if we need this because we do not use the machine API but provision the infrastructure.
+        required: true
+        default: rhcos
+      pull_secret:
+        type: string
+        description: >
+          Specify the pull secret.
+        required: true
+      os_user_domain_name:
+        type: string
+        description: >
+          Specify the user domain name <OTC-EU-DE-000000000010000XXXXX>. If not specified, the os_user_domain_name of the user, who deploys the application, will be used.
+        required: false
+      os_project_name:
+        type: string
+        description: >
+          Specify the user project name <eu-de_test>. If not specified, the os_project_name of the user, who deploys the application, will be used.
+        required: false
+      os_username:
+        type: string
+        description: >
+          Specify the username to authenticate to the API keystone. If not specified, the os_username of the user, who deploys the application, will be used.
+        required: false
+      os_password:
+        type: string
+        description: >
+          Specify the password to authenticate to the API keystone.
+        required: true
+      ssh_public_key:
+        type: string
+        constraints:
+          - pattern: 'ssh-(ed25519|rsa|dss|ecdsa) AAAA(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{4})( [^@]+@[^@]+)?'
+        description: >
+          Specify the SSH public key so that you can SSH to the Bastionhost, OpenShift control, and worker nodes after the deployment.
+          If not specified, we will auto-select one keypair from the user who deploys the application.
+          If ssh_public_key is not set and the user has no keypair, we will display an error before the deployment can start.
+        required: false
+    requirements:
+      - api_vip:
+          capability: otc.capabilities.port.VirtualIP
+          relationship: otc.relationships.openshift.OpenShiftInstallConfigVip
+          occurrences: [1, 1]
+      - host:
+          capability: tosca.capabilities.Container
+          node: tosca.nodes.Compute
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+          node_filter:
+            capabilities:
+              - tosca.capabilities.OperatingSystem:
+                  properties:
+                    - type: { equal: linux }
+                    - architecture: { equal: x86_64 }
+                    - distribution: { valid_values: [ ubuntu ] }
+    interfaces:
+     Standard:
+       configure:
+         description: Create openshift manifests and configure the ignition files.
+         implementation: scripts/create_manifests.py
+       start:
+         description: Setup nginx and publish ignition files for bootstrap, master, worker nodes to download.
+         implementation: playbooks/create_nginx.yaml
+
+relationship_types:
+  otc.relationships.openshift.OpenShiftInstallConfigVip:
+    derived_from: tosca.relationships.DependsOn
+    interfaces:
+      Configure:
+        pre_configure_source:
+          description: >
+            Create openshift install-config.yaml and download openshift-install. The relationship to api_vip is required to get the public_address of the API VIP.
+          inputs:
+            API_FLOATING_IP: { get_attribute: [TARGET, public_address] }
+            API_VIP: { get_attribute: [TARGET, ip_address] }
+            BASE_DOMAIN: { get_property: [SOURCE, base_domain] }
+            CLUSTER_NAME: { get_property: [SOURCE, cluster_name] }
+            CLUSTER_NETWORK: { get_property: [SOURCE, cluster_network] }
+            MACHINE_NETWORK: { get_property: [SOURCE, machine_network] }
+            SERVICE_NETWORK: { get_property: [SOURCE, service_network] }
+            NETWORK_TYPE: { get_property: [SOURCE, network_type] }
+            CLUSTER_OS_IMAGE: { get_property: [SOURCE, cluster_os_image] }
+            PULL_SECRET: { get_property: [SOURCE, pull_secret] }
+            OS_USER_DOMAIN_NAME: { get_property: [SOURCE, os_user_domain_name] }
+            OS_PROJECT_NAME: { get_property: [SOURCE, os_project_name] }
+            OS_USERNAME: { get_property: [SOURCE, os_username] }
+            OS_PASSWORD: { get_property: [SOURCE, os_password] }
+            SSH_PUBLIC_KEY: { get_property: [SOURCE, ssh_public_key] }
+            OPENSHIFT_INSTALL_URL: { get_property: [SOURCE, openshift_install_url] }
+          implementation: playbooks/create_install_config.yaml
