@@ -1,5 +1,10 @@
 # Changelog
 
+## 22.04.2024
+
+* Add service catalog `ÒpenShift`.
+* Move all app templates in the folder `templates`.
+
 ## 31.08.2022
 
 ### Upgrade Nextcloud app v1.2.0
