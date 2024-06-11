@@ -2,7 +2,7 @@
   command: cat /home/ubuntu/openshift/status
   register: file_content
   until: file_content.stdout == "COMPLETED"
-  retries: 60  # 10 seconds * 60 retries = 600 seconds (10 minutes)
+  retries: 90  # 15 minutes
   delay: 10
   ignore_errors: true
 - debug:
