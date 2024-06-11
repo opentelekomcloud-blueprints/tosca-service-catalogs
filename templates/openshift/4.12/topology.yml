@@ -76,6 +76,13 @@ topology_template:
         - greater_or_equal: 16 GB
         - valid_values: ["16 GB", "32 GB", "64 GB", "128 GB", "256 GB"]
       description: "Size of memory associated with the worker node. OpenShift requires minimum 16 GB for worker node."
+    worker_availability_zone:
+      type: string
+      constraints:
+        - valid_values: ["eu-de-01", "eu-de-02", "eu-de-03"]
+      required: false
+      default: "eu-de-01"
+      description: "Choose the availability zone for the worker nodes. Defaults to eu-de-01."
   node_templates:
     Private:
       metadata:
@@ -495,6 +502,7 @@ topology_template:
       type: otc.nodes.Compute
       properties:
         user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/worker.ign\" } ] }, \"version\": \"3.1.0\" } }"
+        availability_zone: { get_input: worker_availability_zone }
       requirements:
         - bindsToCompute_Port_0Binding:
             type_requirement: binding
