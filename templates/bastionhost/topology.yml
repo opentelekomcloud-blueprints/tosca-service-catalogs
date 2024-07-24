@@ -1,7 +1,7 @@
 tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
-  template_name: Bastion host with NAT gateway
+  template_name: Bastionhost
   template_version: 1.0.0
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/bastion_host/index.html"
@@ -18,6 +18,7 @@ description: >
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
   - otc-iaas:1.0.3
+  - yorc-types:1.1.4
   - otc.paas.scripts:1.1.0
   - otc-yorc:1.0.0
   - otc.paas.scripts.common:1.0.0
@@ -102,6 +103,7 @@ topology_template:
           properties:
             secure: true
             protocol: tcp
+            port: 22
             network_name: PRIVATE
             initiator: source
     SSHBastionHost:
@@ -196,6 +198,11 @@ topology_template:
             node: DataNetwork
             capability: tosca.capabilities.network.Linkable
             relationship: tosca.relationships.network.LinksTo
+        - dependsOnSgdatanetworkFeature:
+            type_requirement: dependency
+            node: sg_data_network
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
     Compute_2_Port_1:
       type: otc.nodes.Network.Port
       properties:
@@ -214,14 +221,37 @@ topology_template:
       type: otc.nodes.Network.Public
       properties:
         ip_version: 4
+    sg_data_network:
+      metadata:
+        a4c_edit_x: "-94"
+        a4c_edit_y: 49
+      type: yorc.nodes.SecurityGroup
+      properties:
+        name: "sg-data-network"
+        delete_default_rules: false
+    sgr_your_rule:
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        name: "sgr-web"
+        protocol: tcp
+        direction: inbound
+        from_port: 8080
+        to_port: 8080
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSgdatanetworkHost:
+            type_requirement: host_on_security_group
+            node: sg_data_network
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
   outputs:
     Compute_2_private_address:
       value: { get_attribute: [ Compute_2, private_address ] }
+    Compute_2_Port_0_private_address:
+      value: { get_attribute: [ Compute_2_Port_0, private_address ] }
     BastionHost_private_address:
       value: { get_attribute: [ BastionHost, private_address ] }
     BastionHost_public_address:
       value: { get_attribute: [ BastionHost, public_address ] }
-    Compute_2_Port_0_private_address:
-      value: { get_attribute: [ Compute_2_Port_0, private_address ] }
     Compute_2_Port_1_private_address:
       value: { get_attribute: [ Compute_2_Port_1, private_address ] }
