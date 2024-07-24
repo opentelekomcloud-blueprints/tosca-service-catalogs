@@ -209,7 +209,6 @@ topology_template:
           properties:
             secure: true
             protocol: tcp
-            port: 22
             network_name: PRIVATE
             initiator: source
     Master_0:
