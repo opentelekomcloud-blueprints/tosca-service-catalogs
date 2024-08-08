@@ -136,7 +136,7 @@ topology_template:
       properties:
         dns_name:
           domain: { get_input: base_domain }
-          subdomain: { concat: [ "api.", { get_input: cluster_name }, ".", { get_input: base_domain } ] }
+          subdomain: { concat: [ "api.", { get_input: cluster_name } ] }
         is_default: false
         ip_address: "10.0.0.5"
       requirements:
@@ -455,7 +455,7 @@ topology_template:
       properties:
         dns_name:
           domain: { get_input: base_domain }
-          subdomain: { concat: [ "*.apps.", { get_input: cluster_name }, ".", { get_input: base_domain } ] }
+          subdomain: { concat: [ "*.apps.", { get_input: cluster_name } ] }
         is_default: false
         ip_address: "10.0.0.7"
       requirements:
