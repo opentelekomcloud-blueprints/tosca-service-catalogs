@@ -1,5 +1,9 @@
 # Changelog
 
+## 18.09.2024
+
+* Update template `NextCloud` to use RDS with new volume_type `CLOUDSSD`. The old volume type `COMMON` is not available on OTC anymore.
+
 ## 22.04.2024
 
 * Add service catalog `ÒpenShift`.

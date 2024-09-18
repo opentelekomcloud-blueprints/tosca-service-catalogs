@@ -22,7 +22,7 @@ imports:
   - otc.servicecatalogs.mysql:1.1.1
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.1
-  - otc.paas.rds:1.0.4
+  - otc.paas.rds:1.0.5
   - otc.servicecatalogs.nextcloud:1.2.0
 
 topology_template:
@@ -265,8 +265,8 @@ topology_template:
         type: MySQL
         component_version: 8.0
         root_password: Test123456!
-        instance_size: "1vCPU|2GB"
-        volume_type: SATA
+        instance_size: "2vCPU|4GB"
+        volume_type: CLOUDSSD
         volume_size: 40
         backup_keep_days: 7
         backup_start_time: "01:00-02:00"
