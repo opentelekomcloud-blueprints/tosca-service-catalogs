@@ -16,7 +16,7 @@ description: >
   This temaplte creates a Prometheus monitoring system with Grafana, Prometheus server, node exporters, and alertmanagers.
 
 imports:
-  - otc-iaas:1.0.3
+  - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.prometheus:1.0.0
 

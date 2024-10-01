@@ -5,14 +5,14 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.openshift
-  template_version: 1.0.2
+  template_version: 1.0.3
   template_author: Tri
 
 description: Openshift
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc-iaas:1.0.3
+  - otc-iaas:1.0.4
 
 node_types:
   otc.nodes.SoftwareComponent.OpenShiftInstall:

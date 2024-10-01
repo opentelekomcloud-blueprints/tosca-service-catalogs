@@ -16,7 +16,7 @@ description: >
 
 imports:
   - otc.servicecatalogs.php:1.1.0
-  - otc-iaas:1.0.3
+  - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.apache:1.0.0
   - otc.servicecatalogs.mysql:1.1.1
