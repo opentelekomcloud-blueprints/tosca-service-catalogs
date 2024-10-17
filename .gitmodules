@@ -1,18 +1,6 @@
 [submodule "hardening/playbooks/ansible-collection-hardening"]
 	path = hardening/playbooks/ansible-collection-hardening
 	url = https://github.com/dev-sec/ansible-collection-hardening.git
-[submodule "prometheus/playbooks/roles/cloudalchemy.prometheus"]
-	path = prometheus/playbooks/roles/cloudalchemy.prometheus
-	url = https://github.com/cloudalchemy/ansible-prometheus.git
-[submodule "prometheus/playbooks/roles/cloudalchemy.node_exporter"]
-	path = prometheus/playbooks/roles/cloudalchemy.node_exporter
-	url = https://github.com/cloudalchemy/ansible-node-exporter.git
-[submodule "prometheus/playbooks/roles/cloudalchemy.alertmanager"]
-	path = prometheus/playbooks/roles/cloudalchemy.alertmanager
-	url = https://github.com/cloudalchemy/ansible-alertmanager.git
-[submodule "prometheus/playbooks/roles/cloudalchemy.grafana"]
-	path = prometheus/playbooks/roles/cloudalchemy.grafana
-	url = https://github.com/cloudalchemy/ansible-grafana.git
 [submodule "wordpress/playbooks/roles"]
 	path = wordpress/playbooks/roles
 	url = https://github.com/opentelekomcloud-blueprints/ansible-wordpress.git

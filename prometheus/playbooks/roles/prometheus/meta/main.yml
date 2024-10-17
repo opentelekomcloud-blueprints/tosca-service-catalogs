@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  author: "Prometheus Community"
+  description: "Prometheus monitoring system configuration and management"
+  license: "Apache"
+  min_ansible_version: "2.9"
+  platforms:
+    - name: "Ubuntu"
+      versions:
+        - "focal"
+        - "jammy"
+        - "noble"
+    - name: "Debian"
+      versions:
+        - "bullseye"
+    - name: "EL"
+      versions:
+        - "8"
+        - "9"
+    - name: "Fedora"
+      versions:
+        - "39"
+        - "40"
+  galaxy_tags:
+    - "monitoring"
+    - "prometheus"
+    - "metrics"
+    - "alerts"
+    - "alerting"
+    - "molecule"
+    - "cloud"

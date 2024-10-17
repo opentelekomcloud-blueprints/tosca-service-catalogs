@@ -12,4 +12,4 @@ The following components deploy a Grafana, Prometheus server, node exporters, an
 
 ## How to use
 
-https://docs.designer.otc-service.com/examples/service_catalogs/prometheus
+https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/prometheus.html

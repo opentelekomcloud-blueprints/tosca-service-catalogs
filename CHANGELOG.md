@@ -1,5 +1,11 @@
 # Changelog
 
+## 17.10.2024
+
+* Update template `Prometheus` with version `2.54.1`. This version uses Prometheus `2.54.1`, Grafana `11.2.2`, Node exporter `1.8.2`, Alert Manager `0.27.0`.
+* Update the prometheus roles to the release `0.19.0` of the [Ansible Collection for Prometheus](https://github.com/prometheus-community/ansible).
+* The prometheus roles requires ansible >= `2.16` because the use of `ansible.builtin.include` in the previous ansible versions is deprecated.
+
 ## 18.09.2024
 
 * Update template `NextCloud` to use RDS with new volume_type `CLOUDSSD`. The old volume type `COMMON` is not available on OTC anymore.

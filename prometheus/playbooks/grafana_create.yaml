@@ -49,9 +49,9 @@
         - grafana_server.protocol is defined and grafana_server.protocol == 'https'
         - (grafana_server.cert_key is defined and grafana_server.cert_key == '') or (grafana_server.cert_file is defined and grafana_server.cert_file == '')
 
-    - name: Install grafana using role cloudalchemy.grafana
+    - name: Install grafana using role grafana
       import_role:
-        name: cloudalchemy.grafana
+        name: grafana
       vars:
         grafana_version: "{{ GRAFANA_VERSION }}"
         grafana_logs_dir: "{{ GRAFANA_LOGS_DIR }}"

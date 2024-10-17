@@ -87,10 +87,10 @@
             key_file: "{{ PROMETHEUS_CONFIG_DIR }}/tls.key"
           basic_auth_users:
             prometheus: "{{ PROMETHEUS_AUTH_PASSWORD | password_hash('bcrypt', ('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890' | shuffle(seed=inventory_hostname) | join)[:22], rounds=9) }}"
-    - name: Install Prometheus using role cloudalchemy.prometheus
+    - name: Install Prometheus using role prometheus
       become: true
       import_role:
-        name: cloudalchemy.prometheus
+        name: prometheus
       vars:
         prometheus_version: "{{ PROMETHEUS_VERSION }}"
         prometheus_web_listen_address: "{{ PROMETHEUS_IP_ADDRESS }}:{{ PROMETHEUS_PORT }}"

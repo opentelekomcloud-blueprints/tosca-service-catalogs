@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Prometheus
-  template_version: 2.27.0
+  template_version: 2.54.1
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/prometheus.html"
   template_images:
@@ -13,12 +13,12 @@ metadata:
     - /images/image4.png
 
 description: >
-  This temaplte creates a Prometheus monitoring system with Grafana, Prometheus server, node exporters, and alertmanagers.
+  This temaplte creates a Prometheus monitoring system with Prometheus server (v2.54.1), Grafana (v11.2.2), node exporter (v1.8.2), and alertmanager (v0.27.0).
 
 imports:
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.servicecatalogs.prometheus:1.0.0
+  - otc.servicecatalogs.prometheus:2.54.1
 
 topology_template:
   node_templates:
@@ -130,7 +130,7 @@ topology_template:
     PrometheusServer:
       type: otc.nodes.SoftwareComponent.Prometheus.PrometheusServer
       properties:
-        component_version: "2.27.0"
+        component_version: "2.54.1"
         config_dir: "/etc/prometheus"
         db_dir: "/var/lib/prometheus"
         storage_retention: 30d
@@ -173,7 +173,7 @@ topology_template:
     Grafana:
       type: otc.nodes.SoftwareComponent.Grafana
       properties:
-        component_version: "8.2.2"
+        component_version: "11.2.2"
         logs_dir: "/var/log/grafana"
         data_dir: "/var/lib/grafana"
         security:
@@ -222,7 +222,7 @@ topology_template:
     NodeExporter:
       type: otc.nodes.SoftwareComponent.Prometheus.NodeExporter
       properties:
-        component_version: "1.1.2"
+        component_version: "1.8.2"
         textfile_dir: "/var/lib/node_exporter"
         enabled_collectors: []
         disabled_collectors: []
@@ -244,7 +244,7 @@ topology_template:
     AlertManager:
       type: otc.nodes.SoftwareComponent.Prometheus.AlertManager
       properties:
-        component_version: "0.21.0"
+        component_version: "0.27.0"
         config_dir: "/etc/alertmanager"
         db_dir: "/var/lib/alertmanager"
         route:

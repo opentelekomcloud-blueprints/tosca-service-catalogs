@@ -51,9 +51,9 @@
       file:
         path: /etc/node_exporter/ca.key
         state: absent
-    - name: Config node exporter using role cloudalchemy.node_exporter
+    - name: Config node exporter using role node_exporter
       import_role:
-        name: cloudalchemy.node_exporter
+        name: node_exporter
       vars:
         node_exporter_version: "{{ NODE_EXPORTER_VERSION }}"
         node_exporter_web_listen_address: "{{ NODE_EXPORTER_IP_ADDRESS }}:{{ NODE_EXPORTER_PORT }}"

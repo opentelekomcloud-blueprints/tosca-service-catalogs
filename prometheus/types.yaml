@@ -5,10 +5,10 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.prometheus
-  template_version: 1.0.0
+  template_version: 2.54.1
   template_author: Tri
 
-description: Deploy Prometheus using official ansible role from https://github.com/cloudalchemy
+description: Deploy Prometheus using official ansible role from https://github.com/prometheus-community/ansible
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
@@ -139,26 +139,26 @@ data_types:
           rendering Grafana in a <frame>, <iframe>, <embed> or <object>. The main goal is to mitigate the risk of Clickjacking. Default is false.
         default: false
         required: false
-      strict_transport_security:  
+      strict_transport_security:
         type: boolean
         description: >
           Set to true if you want to enable HTTP Strict-Transport-Security (HSTS) response header. This is only sent when HTTPS is enabled in this configuration.
           HSTS tells browsers that the site should only be accessed using HTTPS.
         default: false
         required: false
-      strict_transport_security_max_age_seconds:  
+      strict_transport_security_max_age_seconds:
         type: integer
         description: >
           Sets how long a browser should cache HSTS in seconds. Only applied if strict_transport_security is enabled. The default value is 86400.
         default: 86400
         required: false
-      strict_transport_security_preload:  
+      strict_transport_security_preload:
         type: boolean
         description: >
           Set to true to enable HSTS preloading option. Only applied if strict_transport_security is enabled. The default value is false.
         default: false
         required: false
-      strict_transport_security_subdomains:  
+      strict_transport_security_subdomains:
         type: boolean
         description: >
           Set to true if to enable the HSTS includeSubDomains option. Only applied if strict_transport_security is enabled. The default value is false.
@@ -440,7 +440,7 @@ node_types:
       component_version:
         type: version
         description: Prometheus package version. Only prometheus 2.x is supported.
-        default: 8.2.2
+        default: 11.2.2
         constraints:
           - greater_or_equal: 5.1
       logs_dir:
@@ -500,14 +500,14 @@ node_types:
       component_version:
         type: version
         description: Prometheus package version. Only prometheus 2.x is supported.
-        default: 2.27.0
+        default: 2.54.1
         constraints:
           - greater_or_equal: 2
           - less_than: 3
       config_dir:
         type: string
         description: Path to directory with prometheus configuration. Default to '/etc/prometheus'.
-        default: /etc/prometheus 
+        default: /etc/prometheus
       db_dir:
         type: string
         description: Path to directory with prometheus database. Default to '/var/lib/prometheus'.
@@ -566,7 +566,7 @@ node_types:
       component_version:
         type: version
         description: Node exporter package version.
-        default: 1.1.2
+        default: 1.8.2
       textfile_dir:
         type: string
         description: Specify the directory used by the Textfile Collector.
@@ -655,7 +655,7 @@ node_types:
       component_version:
         type: version
         description: Node exporter package version.
-        default: 0.21.0
+        default: 0.27.0
       config_dir:
         type: string
         description: Path to directory with alertmanager configuration. Default to /etc/alertmanager
@@ -665,7 +665,7 @@ node_types:
         type: string
         description: Path to directory with alertmanager database. Default to /var/lib/alertmanager
         default: /var/lib/alertmanager
-        required: true  
+        required: true
       route:
         type: otc.datatypes.Alertmanager.RootRoute
         description: Alert routing.

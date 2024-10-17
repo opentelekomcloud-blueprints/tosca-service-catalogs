@@ -4,7 +4,7 @@
   tasks:
     - name: Create alertmanager
       import_role:
-        name: cloudalchemy.alertmanager
+        name: alertmanager
       vars:
         alertmanager_version: "{{ VERSION }}"
         alertmanager_web_listen_address: "{{ IP_ADDRESS }}:{{ PORT }}"
@@ -13,4 +13,4 @@
         alertmanager_resolve_timeout: "{{ RESOLVE_TIMEOUT }}"
         alertmanager_route: "{{ ROUTE }}"
         alertmanager_receivers: "{{ RECEIVERS }}"
-        alertmanager_http_config: "{{ HTTP_CONFIG }}"
+        alertmanager_http_config: "{{ HTTP_CONFIG | default({}, true) }}"
