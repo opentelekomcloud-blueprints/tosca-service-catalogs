@@ -79,10 +79,10 @@ topology_template:
     worker_availability_zone:
       type: string
       constraints:
-        - valid_values: ["eu-de-01", "eu-de-02", "eu-de-03"]
+        - valid_values: ["az-01", "az-02", "az-03"]
       required: false
-      default: "eu-de-01"
-      description: "Choose the availability zone for the worker nodes. Defaults to eu-de-01."
+      default: "az-01"
+      description: "Choose the availability zone for the worker nodes. The value 'az-*' is equivalent to 'eu-de-*' for the deployment in region Germany, and 'eu-ch2-*' for the deployment in Switzerland."
   node_templates:
     Private:
       metadata:
@@ -181,7 +181,7 @@ topology_template:
         a4c_edit_y: "-81"
       type: otc.nodes.Compute
       properties:
-        availability_zone: "eu-de-01"
+        availability_zone: "az-01"
       requirements:
         - bindsToCompute_Port_0Binding:
             type_requirement: binding
@@ -218,7 +218,7 @@ topology_template:
       type: otc.nodes.Compute
       properties:
         user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-0.ign\" } ] }, \"version\": \"3.1.0\" } }"
-        availability_zone: "eu-de-01"
+        availability_zone: "az-01"
       requirements:
         - bindsToCompute_2_Port_0Binding:
             type_requirement: binding
@@ -259,7 +259,7 @@ topology_template:
       type: otc.nodes.Compute
       properties:
         user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-1.ign\" } ] }, \"version\": \"3.1.0\" } }"
-        availability_zone: "eu-de-02"
+        availability_zone: "az-02"
       requirements:
         - bindsToMaster_1_Port_0Binding:
             type_requirement: binding
@@ -300,7 +300,7 @@ topology_template:
       type: otc.nodes.Compute
       properties:
         user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/master-2.ign\" } ] }, \"version\": \"3.1.0\" } }"
-        availability_zone: "eu-de-03"
+        availability_zone: "az-03"
       requirements:
         - bindsToMaster_2_Port_0Binding:
             type_requirement: binding
@@ -397,7 +397,7 @@ topology_template:
       type: otc.nodes.Compute
       properties:
         user_data: "{ \"ignition\": { \"config\": { \"merge\": [ { \"source\": \"http://10.0.0.10/bootstrap.ign\" } ] }, \"version\": \"3.1.0\" } }"
-        availability_zone: "eu-de-01"
+        availability_zone: "az-01"
       requirements:
         - bindsToBootstrap_Port_0Binding:
             type_requirement: binding
@@ -1339,7 +1339,7 @@ topology_template:
       type: otc.nodes.BlockStorage.BootVolume
       properties:
         image_name: "Standard_Ubuntu_22.04_latest"
-        volume_type: SATA
+        volume_type: SSD
         size: "50 GB"
       requirements:
         - attachToBastionhostAttach:
