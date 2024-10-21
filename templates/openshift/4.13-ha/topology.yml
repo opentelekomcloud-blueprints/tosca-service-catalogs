@@ -21,7 +21,7 @@ imports:
   - otc.paas.scripts.ansible.tasks:1.1.0
   - otc-iaas:1.0.4
   - otc-yorc:1.0.0
-  - otc.servicecatalogs.openshift:1.0.3
+  - otc.servicecatalogs.openshift:1.0.4
   - otc.paas.scripts.common:1.0.0
 
 topology_template:

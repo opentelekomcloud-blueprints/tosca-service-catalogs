@@ -24,11 +24,6 @@
         path: "{{ openshift_dir }}"
         state: directory
         #mode: 0640
-    - name: Create install-config.yaml
-      template:
-        src: install-config.j2
-        dest: "{{ openshift_dir }}/install-config.yaml"
-        mode: 0640
     - name: Download openshift-install
       get_url:
         url: "{{ OPENSHIFT_INSTALL_URL }}"
@@ -39,11 +34,33 @@
         src: "{{ openshift_dir }}/openshift-install-linux.tar.gz"
         dest: "{{ openshift_dir }}"
         remote_src: yes
-    - name: Create clouds.yml
+    # Config for Open Telekom Cloud
+    - name: Create install-config.yaml for Open Telekom Cloud
+      template:
+        src: install-config.j2
+        dest: "{{ openshift_dir }}/install-config.yaml"
+        mode: 0640
+      when: os_project_name is not match("eu-ch2.*")
+    - name: Create clouds.yml for Open Telekom Cloud
       template:
         src: clouds.j2
         dest: "{{ openshift_dir }}/clouds.yml"
         mode: 0640
+      when: os_project_name is not match("eu-ch2.*")
+    # Config for Swiss Open Telekom Cloud
+    - name: Create install-config.yaml for Swiss Open Telekom Cloud
+      template:
+        src: install-config-ch2.j2
+        dest: "{{ openshift_dir }}/install-config.yaml"
+        mode: 0640
+      when: os_project_name is match("eu-ch2.*")
+    - name: Create clouds.yml for Swiss Open Telekom Cloud
+      template:
+        src: clouds-ch2.j2
+        dest: "{{ openshift_dir }}/clouds.yml"
+        mode: 0640
+      when: os_project_name is match("eu-ch2.*")
+    # End config
     - name: Add OpenShift API domain to /etc/hosts
       become: true
       blockinfile:
