@@ -6,6 +6,16 @@
 
 https://github.com/openshift/installer/blob/release-4.12/docs/user/openstack/install_upi.md
 
-## How to use
+## Change logs
 
+### 1.0.6
 
+Fix "no package nginx" found error by running apt-get update before install nginx.
+
+### 1.0.5
+
+Update for intalling OpenShift v4.16
+
+### 1.0.4
+
+Add configs to Support Swiss OTC auth_url endpoint.

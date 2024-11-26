@@ -7,9 +7,10 @@
     openshift_dir: "/home/ubuntu/openshift"
   tasks:
     - name: Install nginx
-      package:
+      apt:
         name: nginx
         state: present
+        update_cache: yes
     - name: Copy ignition files to /var/www/html
       copy:
         remote_src: true

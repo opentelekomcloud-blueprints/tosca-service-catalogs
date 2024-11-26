@@ -36,7 +36,7 @@ else:
 
 if os.path.exists(OPENSHIFT_DIR+"/openshift"):
   print('Remove Machines and MachineSets')
-  process2 = subprocess.run(['rm -f openshift/99_openshift-cluster-api_master-machines-*.yaml openshift/99_openshift-cluster-api_worker-machineset-*.yaml'],
+  process2 = subprocess.run(['rm -f openshift/99_openshift-cluster-api_master-machines-*.yaml openshift/99_openshift-cluster-api_worker-machineset-*.yaml openshift/99_openshift-machine-api_master-control-plane-machine-set.yaml'],
                            shell=True,
                            stdout=subprocess.PIPE,
                            universal_newlines=True,

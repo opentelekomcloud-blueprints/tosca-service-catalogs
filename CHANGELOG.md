@@ -1,5 +1,10 @@
 # Changelog
 
+## 26.11.2024
+
+* Add template OpenShift `4.16.19` (latest stable version).
+* Update `otc.servicecatalogs.openshift:1.0.6` to deploy on Swiss OTC and fix "no package nginx" found error.
+
 ## 17.10.2024
 
 * Update template `Prometheus` with version `2.54.1`. This version uses Prometheus `2.54.1`, Grafana `11.2.2`, Node exporter `1.8.2`, Alert Manager `0.27.0`.
