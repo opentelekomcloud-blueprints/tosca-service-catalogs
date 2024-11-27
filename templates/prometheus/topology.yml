@@ -18,7 +18,7 @@ description: >
 imports:
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.servicecatalogs.prometheus:2.54.1
+  - otc.servicecatalogs.prometheus:2.0.0
 
 topology_template:
   node_templates:
