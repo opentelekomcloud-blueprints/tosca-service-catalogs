@@ -22,7 +22,7 @@ imports:
   - otc.servicecatalogs.mysql:1.1.1
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.1
-  - otc.paas.rds:1.0.5
+  - otc.paas.rds:1.0.6
   - otc.servicecatalogs.nextcloud:1.2.0
 
 topology_template:
@@ -272,7 +272,7 @@ topology_template:
         backup_start_time: "01:00-02:00"
         ha_mode: single
         availability_zone:
-          - "eu-de-03"
+          - "az-02"
       requirements:
         - networkPrivateConnection:
             type_requirement: network
