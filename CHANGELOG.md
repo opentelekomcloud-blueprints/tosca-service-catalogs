@@ -1,5 +1,10 @@
 # Changelog
 
+## 27.11.2024
+
+* Update `otc.servicecatalogs.openshift:1.0.7` to delete `bootstrap.ign` file after the deployment of OpenShift completes.
+* Update all OpenShift templates 4.12, 4.13, 4.16 to use the image `Standard_Ubuntu_24.04_amd64_uefi_latest` for the bastion host.
+
 ## 26.11.2024
 
 * Add template OpenShift `4.16.19` (latest stable version).
