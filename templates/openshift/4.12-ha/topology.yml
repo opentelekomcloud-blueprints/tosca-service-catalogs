@@ -21,7 +21,7 @@ imports:
   - otc.paas.scripts.ansible.tasks:1.1.0
   - otc-iaas:1.0.4
   - otc-yorc:1.0.0
-  - otc.servicecatalogs.openshift:1.0.4
+  - otc.servicecatalogs.openshift:1.0.7
   - otc.paas.scripts.common:1.0.0
 
 topology_template:
@@ -205,7 +205,7 @@ topology_template:
             architecture: "x86_64"
             type: linux
             distribution: ubuntu
-            version: 22.04
+            version: 24.04
         scalable:
           properties:
             min_instances: 1
@@ -1302,7 +1302,7 @@ topology_template:
     Bastionhost_BootVolume:
       type: otc.nodes.BlockStorage.BootVolume
       properties:
-        image_name: "Standard_Ubuntu_22.04_latest"
+        image_name: "Standard_Ubuntu_24.04_amd64_uefi_latest"
         volume_type: SSD
         size: "50 GB"
       requirements:

@@ -11,6 +11,7 @@
 
 OPENSHIFT_DIR="/home/ubuntu/openshift"
 OPENSHIFT_API_URL="https://10.0.0.5:6443/version"
+BOOTSTRAP_IGN_FILE="/var/www/html/bootstrap.ign"
 # Set the path to the kubeconfig file
 export KUBECONFIG="$OPENSHIFT_DIR/auth/kubeconfig"
 
@@ -79,6 +80,14 @@ approve_worker_nodes() {
   done
 }
 
+clean_up() {
+  if [[ -f "$BOOTSTRAP_IGN_FILE" ]]; then
+    echo "Deleting bootstrap.ign..."
+    sudo rm "$BOOTSTRAP_IGN_FILE"
+    echo "bootstrap.ign deleted"
+  fi
+}
+
 # Required oc to run
 if [[ ! -f "/usr/bin/oc" ]]; then
   exit 0
@@ -107,6 +116,7 @@ do
       # Check for installation complete
       check_complete
     elif [[ "$STATUS" == "COMPLETED" ]]; then
+      clean_up
       # approve new worker nodes
       approve_worker_nodes
     fi

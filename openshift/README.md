@@ -8,6 +8,10 @@ https://github.com/openshift/installer/blob/release-4.12/docs/user/openstack/ins
 
 ## Change logs
 
+### 1.0.7
+
+Update `openshift_checks.sh` to delete `bootstrap.ign` file on Bastionhost when status is COMPLETED.
+
 ### 1.0.6
 
 Fix "no package nginx" found error by running apt-get update before install nginx.
