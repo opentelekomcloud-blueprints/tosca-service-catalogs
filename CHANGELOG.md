@@ -1,5 +1,9 @@
 # Changelog
 
+## 03.01.2025
+
+* Update `Prometheus` template to also use a `NATGateway` because [VPC Shared SNAT End of Life 01.01.2025](https://www.open-telekom-cloud.com/en/support/release-notes/vpc-shared-snat-end-of-life-01-01-2025).
+
 ## 27.11.2024
 
 * Update `otc.servicecatalogs.openshift:1.0.7` to delete `bootstrap.ign` file after the deployment of OpenShift completes.
