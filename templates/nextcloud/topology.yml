@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Nextcloud
-  template_version: 28-latest
+  template_version: 28
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/nextcloud.html"
   template_images:
@@ -26,6 +26,14 @@ imports:
   - otc.servicecatalogs.nextcloud:1.2.0
 
 topology_template:
+  inputs:
+    rds_mysql_volume_type:
+      type: string
+      required: true
+      default: CLOUDSSD
+      constraints:
+        - valid_values: [CLOUDSSD, ESSD, ULTRAHIGH]
+      description: "Specifies the volume type. In region 'eu-de' choose 'CLOUDSSD' for SSD storage, 'ESSD' for extreme SSD storage. In region 'eu-nl' and 'eu-ch2', choose 'ULTRAHIGH'."
   node_templates:
     Private:
       metadata:
@@ -264,13 +272,13 @@ topology_template:
       properties:
         type: MySQL
         component_version: 8.0
-        root_password: Test123456!
+        volume_type: { get_input: rds_mysql_volume_type }
+        ha_mode: single
+        root_password: "Test123456!"
         instance_size: "2vCPU|4GB"
-        volume_type: CLOUDSSD
         volume_size: 40
         backup_keep_days: 7
         backup_start_time: "01:00-02:00"
-        ha_mode: single
         availability_zone:
           - "az-02"
       requirements:
@@ -300,8 +308,9 @@ topology_template:
       capabilities:
         storage_endpoint:
           properties:
-            protocol: tcp
+            port: 443
             secure: true
+            protocol: tcp
             network_name: PRIVATE
             initiator: source
   outputs:
