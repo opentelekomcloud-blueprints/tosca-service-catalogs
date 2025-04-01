@@ -1,5 +1,9 @@
 # Changelog
 
+## 01.04.2025
+
+* Update `Bash` component with version `1.1.1` to have the environment variable `ÌP_ADDRESS`, which is the private IP address of the host compute.
+
 ## 03.01.2025
 
 * Update `Prometheus` template to also use a `NATGateway` because [VPC Shared SNAT End of Life 01.01.2025](https://www.open-telekom-cloud.com/en/support/release-notes/vpc-shared-snat-end-of-life-01-01-2025).

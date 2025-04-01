@@ -19,7 +19,7 @@ imports:
   - tosca-normative-types:1.0.0-ALIEN20
   - otc-iaas:1.0.4
   - yorc-types:1.1.5
-  - otc.paas.scripts:1.1.0
+  - otc.paas.scripts:1.1.1
   - otc-yorc:1.0.0
   - otc.paas.scripts.common:1.0.0
 

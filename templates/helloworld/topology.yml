@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: HelloWorld
-  template_version: 1.0.5
+  template_version: 1.0.6
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/bash/bash_create.html"
   template_images:
@@ -18,7 +18,7 @@ description: >
 imports:
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.paas.scripts:1.1.0
+  - otc.paas.scripts:1.1.1
   - otc.paas.scripts.common:1.0.0
 
 topology_template:
