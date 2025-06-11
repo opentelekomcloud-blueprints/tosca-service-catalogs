@@ -12,10 +12,10 @@ metadata:
     - /images/image3.png
 
 description: >
-  This template deploys NextCloud app on Open Telekom Cloud using Object Storage and Relational Database Service as the storage back-end and the MySQL Server, respectively.
+  This template deploys NextCloud app (version 28) on Open Telekom Cloud using Object Storage and Relational Database Service as the storage back-end and the MySQL Server, respectively.
 
 imports:
-  - otc.servicecatalogs.php:1.1.0
+  - otc.servicecatalogs.php:1.1.1
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.apache:1.0.0
@@ -23,7 +23,7 @@ imports:
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.1
   - otc.paas.rds:1.0.6
-  - otc.servicecatalogs.nextcloud:1.2.0
+  - otc.servicecatalogs.nextcloud:1.2.1
 
 topology_template:
   inputs:
@@ -72,7 +72,7 @@ topology_template:
             architecture: "x86_64"
             type: linux
             distribution: ubuntu
-            version: 20.04
+            version: 22.04
         scalable:
           properties:
             min_instances: 1
@@ -207,7 +207,8 @@ topology_template:
             pool_listen_allowed_clients: "127.0.0.1"
             pool_pm_max_requests: 500
             pool_name: www
-        component_version: 8.0
+            pool_pm_status_path: "/status"
+        component_version: 8.2
         php_packages_extra: []
         memory_limit: 512M
         max_execution_time: 60

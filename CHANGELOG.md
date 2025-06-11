@@ -1,5 +1,15 @@
 # Changelog
 
+## 11.06.2025
+
+* Fixed deployment of Nextcloud template failed because Ubuntu 20.04 is end of life:
+
+1. Update the compute OS to use Ubuntu 22.04 instead of 20.04.
+2. Update `otc.servicecatalogs.php:1.1.1` to use the ansible role [geerlingguy.php](https://github.com/geerlingguy/ansible-role-php) with tag `6.0.0` and installs PHP version `8.2` by default.
+3. Improve `otc.servicecatalogs.nextcloud:1.2.1` to ensure bzip2 is installed. This is required to unpack the nextcloud archive.
+
+* Removed the `stop` interface from the Bash script component in `otc.paas.scripts:1.1.2`. From now on, the undeployment process will not call the `stop` interface of the Bash script anymore.
+
 ## 01.04.2025
 
 * Update `Bash` component with version `1.1.1` to have the environment variable `ÌP_ADDRESS`, which is the private IP address of the host compute.

@@ -5,6 +5,11 @@
   strategy: free
   gather_facts: no
   tasks:
+    - name: Ensure bzip2 is installed
+      become: true
+      package:
+        name: bzip2
+        state: present
     - name: create datadir
       become: true
       file:

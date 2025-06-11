@@ -5,10 +5,13 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.php
-  template_version: 1.1.0
+  template_version: 1.1.1
   template_author: Tri
 
-description: PHP
+description: >
+  Installs PHP on RedHat/CentOS and Debian/Ubuntu servers using Ansible role geerlingguy/ansible-role-php (Tag 6.0.0).
+  This role only works with PHP versions that are currently supported by the PHP community.
+  See also: https://www.php.net/supported-versions.php
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
@@ -73,6 +76,12 @@ data_types:
           This can be useful to work around memory leaks in 3rd party libraries. For endless request processing specify '0'.
         default: 500
         required: false
+      pool_pm_status_path:
+        type: string
+        description: >
+          The URI to view the FPM status page. This value must start with a leading slash (/). If this value is not set, no URI will be recognized as a status page.
+        default: ""
+        required: false
 
 node_types:
   otc.nodes.SoftwareComponent.PHP:
@@ -83,9 +92,9 @@ node_types:
     properties:
       component_version:
         type: version
-        default: 7.4
+        default: 8.2
         constraints:
-          - greater_or_equal: 7.3
+          - greater_or_equal: 8.2
       php_packages_extra:
         type: list
         entry_schema:
@@ -287,6 +296,7 @@ node_types:
             pool_pm_min_spare_servers: 5
             pool_pm_max_spare_servers: 5
             pool_pm_max_requests: 500
+            pool_pm_status_path: /status
     requirements:
       - host:
           capability: tosca.capabilities.Container

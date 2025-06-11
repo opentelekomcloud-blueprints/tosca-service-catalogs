@@ -4,13 +4,13 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.nextcloud
-  template_version: 1.2.0
+  template_version: 1.2.1
   template_author: Tri
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.apache:1.0.0
-  - otc.servicecatalogs.php:1.1.0
+  - otc.servicecatalogs.php:1.1.1
   - otc.iaas.obs:1.0.0
 
 data_types:
