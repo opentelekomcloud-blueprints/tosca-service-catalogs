@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.paas.scripts
-  template_version: 1.1.1
+  template_version: 1.1.2
   template_author: Tri
 
 description: >
@@ -55,16 +55,6 @@ node_types:
             PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
             IP_ADDRESS: { get_attribute: [HOST, private_address] }
           implementation: scripts/configure.sh
-        stop:
-          inputs:
-            COMPONENT_VERSION: { get_property: [SELF, component_version] }
-            ENV: { get_property: [SELF, data_endpoint, env] }
-            PROTOCOL: { get_property: [SELF, data_endpoint, protocol] }
-            PORT: { get_property: [SELF, data_endpoint, port] }
-            URL_PATH: { get_property: [SELF, data_endpoint, url_path] }
-            PORT_NAME: { get_property: [SELF, data_endpoint, port_name] }
-            IP_ADDRESS: { get_attribute: [HOST, private_address] }
-          implementation: scripts/stop.sh
     artifacts:
       - upload:
           type: tosca.artifacts.File
@@ -82,10 +72,6 @@ node_types:
           type: tosca.artifacts.Implementation.Bash
           description: Specify a bash script to notify a target node that this node is now available.
           file: examples/add_source.sh
-      - stop:
-          type: tosca.artifacts.Implementation.Bash
-          description: Specify a bash script to execute when this node stops.
-          file: examples/stop.sh
 
 
 relationship_types:

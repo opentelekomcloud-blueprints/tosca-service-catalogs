@@ -18,7 +18,7 @@ description: >
 imports:
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.paas.scripts:1.1.1
+  - otc.paas.scripts:1.1.2
   - otc.paas.scripts.common:1.0.0
 
 topology_template:
