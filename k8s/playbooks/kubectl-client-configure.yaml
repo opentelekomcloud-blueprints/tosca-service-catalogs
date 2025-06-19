@@ -1,0 +1,60 @@
+- name: Setup Kubectl client
+  hosts: all
+  gather_facts: yes
+  strategy: free
+  vars:
+    kubeconfig_path: "/home/{{ ansible_user }}/.kube/config"
+  tasks:
+    - name: Update apt cache and install python3-kubernetes, which is required for the ansible module kubernetes.core.k8s
+      become: true
+      apt:
+        name: python3-kubernetes
+        state: present
+        update_cache: yes
+
+    - name: Set version fact from the component_version property
+      set_fact:
+        kubectl_version: "v{{ KUBECTL_VERSION }}"
+      when: KUBECTL_VERSION is defined and KUBECTL_VERSION | length > 0
+
+    - name: Get latest stable kubectl version if not set
+      block:
+        - name: Get latest stable kubectl version if not set
+          shell: |
+            curl -L -s https://dl.k8s.io/release/stable.txt
+          register: kubectl_version_result
+          changed_when: false
+        - name: Set default version fact
+          set_fact:
+            kubectl_version: "{{ kubectl_version_result.stdout }}"
+      when: KUBECTL_VERSION is not defined or KUBECTL_VERSION | length == 0
+
+    - name: Download kubectl binary
+      become: true
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        dest: "/usr/local/bin/kubectl"
+        mode: '0755'
+
+    - name: Download kubectl checksum file
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl.sha256"
+        dest: "/tmp/kubectl.sha256"
+
+    - name: Verify kubectl checksum
+      shell: |
+        echo "$(cat /tmp/kubectl.sha256)  /usr/local/bin/kubectl" | sha256sum --check
+      register: checksum_result
+      failed_when: "'OK' not in checksum_result.get('stdout', '')"
+
+    - name: Ensure .kube directory exists
+      file:
+        path: "{{ kubeconfig_path | dirname }}"
+        state: directory
+        mode: '0700'
+
+    - name: Write kubeconfig file
+      copy:
+        content: "{{ KUBECONFIG }}"
+        dest: "{{ kubeconfig_path }}"
+        mode: '0600'

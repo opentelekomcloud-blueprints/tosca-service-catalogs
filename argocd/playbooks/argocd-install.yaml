@@ -1,0 +1,80 @@
+- name: Use helm to install ArgoCD
+  hosts: all
+  vars:
+    timeout: 300  # seconds
+    delay: 5      # seconds between retries
+  tasks:
+    - name: Add the helm repository
+      kubernetes.core.helm_repository:
+        name: argo
+        repo_url: "{{ CHART_REPO }}"
+
+    - name: Deploy ArgoCD chart inside the argocd namespace (and create it)
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: "{{ CHART_REF }}"
+        chart_version: "{{ CHART_VERSION | default(omit) }}"
+        release_namespace: argocd
+        create_namespace: true
+        values_files:
+          - "{{ chart_values }}"
+        wait: true
+      register: helm_result
+      failed_when: helm_result.failed
+
+    - name: Outputs argocd
+      when: helm_result is succeeded
+      block:
+        - name: Get Argo CD admin password
+          shell: >
+            kubectl -n argocd get secret argocd-initial-admin-secret
+            -o jsonpath="{.data.password}" | base64 -d
+          register: admin_secret
+          no_log: true
+
+        - name: Output the initial admin password of argocd. Remember to change the password after first login.
+          set_fact:
+            ADMIN_PASSWORD: "{{ admin_secret.stdout }}"
+          no_log: true
+
+        - name: Set ELB_IP when access_with_elb is disabled
+          set_fact:
+            ELB_IP: "access_with_elb is disabled"
+          when: not ACCESS_WITH_ELB | default(false) | bool
+
+        - name: Enable access to argocd using service LoadBalancer
+          when: ACCESS_WITH_ELB | default(false) | bool
+          block:
+            - name: Patch argocd-server Service with type LoadBalancer so that you can access argocd via the public IP address of the load balancer
+              kubernetes.core.k8s:
+                state: present
+                definition:
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    name: argocd-server
+                    namespace: argocd
+                    annotations:
+                      service.protal.kubernetes.io/type: LoadBalancer
+                      kubernetes.io/elb.class: union
+                      kubernetes.io/elb.autocreate: |
+                        {"bandwidth_chargemode":"traffic","bandwidth_name":"cce-bandwidth-argocd-server","bandwidth_sharetype":"PER","bandwidth_size":5,"eip_type":"5_bgp","type":"public"}
+                  spec:
+                    type: LoadBalancer
+                    loadBalancerIP: ''
+                wait: true
+
+            - name: Wait for LoadBalancer external IP
+              command: >
+                kubectl get svc argocd-server -n argocd
+                -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+              register: svc_ip_result
+              failed_when: false
+              changed_when: false
+              retries: 5
+              delay: 5
+              until: svc_ip_result.stdout != ""
+
+            - name: Output ELB_IP
+              set_fact:
+                ELB_IP: "{{ svc_ip_result.stdout | default('No external IP assigned yet') }}"

@@ -1,0 +1,233 @@
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.caas.cce
+  template_author: Tri
+  template_version: 1.0.3
+
+description: >
+  Provides components for CCE.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc-iaas:1.0.4
+
+node_types:
+  otc.nodes.cce.CCECluster:
+    abstract: true
+    derived_from: tosca.nodes.Root
+    description: >
+      Use this component to deploy a CCE standard cluster on Virtual Machine.
+      If the 'KubectlClient' service component exists in the topology, it auto-creates the app secret 'kubeconfig', which is used by the 'KubectlClient' to connect to the CCE cluster.
+      (Optional) Connect the 'eip' requirement of this component to the Public network to assign an EIP address for the cluster.
+    tags:
+      icon: /images/cce.png
+    attributes:
+      id:
+        type: string
+        description: ID of the cluster resource.
+      status:
+        type: string
+        description: Cluster status information.
+      internal:
+        type: string
+        description: The internal network address.
+      external:
+        type: string
+        description: The external network address.
+      external_otc:
+        type: string
+        description: The endpoint of the cluster to be accessed through API Gateway.
+    properties:
+      name:
+        type: string
+        description: >
+          Specifies a cluster name. If not specified, the name will be auto-generated from the node name in the Deploy Setup. Changing this parameter will create a new cluster resource.
+        required: false
+      cluster_type:
+        type: string
+        constraints:
+          - valid_values: [ "VirtualMachine" ]
+        description: >
+          Specifies cluster type.
+        required: true
+        default: VirtualMachine
+      cluster_version:
+        type: string
+        description: >
+          Specifies cluster version (e.g., 'v1.30'). If not set, the latest version will be used. Changing this parameter will create a new cluster resource.
+        required: false
+      multi_az:
+        type: boolean
+        description: >
+          Enable multiple AZs for the cluster, only when using HA flavors. Changing this parameter will create a new cluster resource.
+        required: false
+        default: false
+      flavor_id:
+        type: string
+        constraints:
+          - valid_values: [ "cce.s1.small", "cce.s1.medium", "cce.s2.small", "cce.s2.medium", "cce.s2.large", "cce.s2.xlarge" ]
+        description: >
+          Cluster specifications. Changing this parameter will create a new cluster resource.
+          'cce.s1.small' - small-scale single cluster (up to 50 nodes).
+          'cce.s1.medium' - medium-scale single cluster (up to 200 nodes).
+          'cce.s2.small' - small-scale HA cluster (up to 50 nodes).
+          'cce.s2.medium' - medium-scale HA cluster (up to 200 nodes).
+          'cce.s2.large' - large-scale HA cluster (up to 1000 nodes).
+          'cce.s2.xlarge' - ultra-large-scale, high availability cluster (<= 2,000 nodes).
+        required: true
+        default: "cce.s1.small"
+      container_network_type:
+        type: string
+        description: >
+          Specifies container network type.
+        required: true
+        default: "overlay_l2"
+      container_network_cidr:
+        type: string
+        description: >
+          Specifies container network segment. Changing this parameter will create a new cluster resource. Defaults to '172.16.0.0/16' if not set.
+        required: false
+      kubernetes_svc_ip_range:
+        type: string
+        description: >
+          Specifies service CIDR block, or the IP address range which the kubernetes clusterIp must fall within. Defaults to '10.247.0.0/16' if not set.
+        required: false
+      authentication_mode:
+        type: string
+        constraints:
+          - valid_values: [ "rbac", "authenticating_proxy" ]
+        description: >
+          Specifies authentication mode of the cluster, possible values are 'rbac' and 'authenticating_proxy'. Defaults to 'rbac'. Changing this parameter will create a new cluster resource.
+        required: false
+        default: rbac
+      kube_proxy_mode:
+        type: string
+        constraints:
+          - valid_values: [ "ipvs", "iptables" ]
+        description: >
+          Specifies service forwarding mode.
+          'iptables' - Traditional kube-proxy uses iptables rules to implement service load balancing.
+          'ipvs' - Optimized kube-proxy mode with higher throughput and faster speed, supports incremental updates, suitable for large-sized clusters.
+        required: false
+        default: ipvs
+      annotations:
+        type: map
+        description: >
+          Cluster annotation, key/value pair format. Changing this parameter will create a new cluster resource.
+        required: false
+        entry_schema:
+          type: string
+    capabilities:
+      cce_cluster:
+        type: otc.capabilities.CCECluster
+    requirements:
+      - network:
+          description: Connect this CCE cluster to a private network, which is required to create the CCE node.
+          capability: tosca.capabilities.Connectivity
+          relationship: otc.relationships.CCEClusterConnectToNetwork
+          occurrences: [ 1, 1 ]
+      - eip:
+          description: Connect this CCE cluster to a public network so that the cluster is assigned with an EIP address.
+          capability: tosca.capabilities.Connectivity
+          relationship: otc.relationships.CCEClusterConnectToPublicNetwork
+          occurrences: [ 0, 1 ]
+
+  otc.nodes.cce.CCENode:
+    abstract: true
+    derived_from: tosca.nodes.Root
+    description: >
+      Use this component to deploy a CCE node.
+    tags:
+      icon: /images/cce.png
+    attributes:
+      server_id:
+        type: string
+        description: ID of the ECS where the node resides.
+      status:
+        type: string
+        description: Node status information.
+    properties:
+      name:
+        type: string
+        description: >
+          Specifies a node name. If not specified, the name will be auto-generated from the node name in the Deploy Setup.
+        required: false
+      availability_zone:
+        type: string
+        constraints:
+          - valid_values: ["az-01", "az-02", "az-03"]
+        description: >
+          Specifies the name of the availability zone. Changing this parameter will create a new resource.
+        required: true
+        default: "az-01"
+      flavor_id:
+        type: string
+        description: >
+          Specifies the flavor id (e.g., 's3.large.2'). Changing this parameter will create a new resource.
+        required: true
+      os:
+        type: string
+        constraints:
+          - valid_values: [ "HCE OS 2.0", "EulerOS 2.9" ]
+        default: "HCE OS 2.0"
+        description: >
+          Specifies node OS. Defaults to 'HCE OS 2.0'. Changing this parameter will create a new resource.
+        required: false
+      root_volume_size:
+        type: integer
+        constraints:
+          - in_range: [ 40, 1024 ]
+        description: >
+          Specifies size of the system disk. Changing this parameter will create a new resource.
+        required: true
+        default: 50
+      data_volumes_size:
+        type: integer
+        constraints:
+          - in_range: [ 20, 30768 ]
+        description: >
+          Specifies size of the data disk. Changing this parameter will create a new resource.
+        required: true
+        default: 100
+      key_pair:
+        type: string
+        description: >
+          Key pair name when logging in to select the key pair mode.
+          If not specified, a keypair from the Open Telekom Cloud console will be auto-added in the Deploy Setup. Changing this parameter will create a new resource.
+        required: false
+      k8s_tags:
+        type: map
+        description: >
+          Tags of a Kubernetes node, key/value pair format. Only letters, digits, hyphens (-), underscores (_), and periods (.) are allowed.
+          A DNS subdomain can be prefixed to a key. Example DNS subdomain: 'example.com/my-key'.
+          Changing this parameter will create a new resource.
+        required: false
+        entry_schema:
+          type: string
+    capabilities:
+      scalable:
+        type: tosca.capabilities.Scalable
+    requirements:
+      - add_to_cce_cluster:
+          description: Add a CCE node to a CCE cluster. Changing this parameter will create a new resource.
+          relationship: otc.relationships.AddNodeToCCECluster
+          capability: otc.capabilities.CCECluster
+          occurrences: [ 1, 1 ]
+
+capability_types:
+  otc.capabilities.CCECluster:
+    derived_from: tosca.capabilities.Node
+
+relationship_types:
+  otc.relationships.AddNodeToCCECluster:
+    derived_from: tosca.relationships.DependsOn
+    valid_target_types: [ otc.capabilities.CCECluster ]
+
+  otc.relationships.CCEClusterConnectToNetwork:
+    derived_from: tosca.relationships.Network
+    valid_target_types: [ otc.nodes.Network.Private ]
+
+  otc.relationships.CCEClusterConnectToPublicNetwork:
+    derived_from: tosca.relationships.Network
+    valid_target_types: [ otc.nodes.Network.Public ]

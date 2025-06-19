@@ -1,0 +1,399 @@
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: ArgoCD
+  template_version: 3.0.6
+  template_author: Dr. Tri Vo
+  template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/argocd.html"
+  template_images:
+    - /images/thumbnail.png
+    - /images/image1.png
+    - /images/image2.png
+    - /images/image3.png
+    - /images/image4.png
+    - /images/image5.png
+    - /images/image6.png
+
+description: >
+  Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
+  With Argo CD, you can specify a Git respository, which contains the K8s resources of your app.
+  The deployment uses Argo CD to pull the K8s resources from the Git repository and auto-sync them to a new Cloud Container Engine (CCE).
+  After the deployment completes, your app is up and running on the CCE cluster. Moreover, you can access Argo CD to add more apps.
+
+imports:
+  - otc.servicecatalogs.argocd:1.0.1
+  - tosca-normative-types:1.0.0-ALIEN20
+  - yorc-types:1.1.5
+  - otc-iaas:1.0.4
+  - otc.caas.cce:1.0.3
+  - otc.servicecatalogs.k8s:1.0.1
+  - otc-yorc:1.0.0
+  - otc.paas.scripts:1.1.2
+  - otc.paas.scripts.common:1.0.0
+  - otc.servicecatalogs.helm:1.0.0
+
+topology_template:
+  inputs:
+    cluster_flavor_id:
+      type: string
+      required: true
+      default: "cce.s1.small"
+      constraints:
+        - valid_values: [cce.s1.small, cce.s1.medium, cce.s2.small, cce.s2.medium, cce.s2.large, cce.s2.xlarge]
+      description: "Cluster specifications. Changing this parameter will create a new cluster resource. 'cce.s1.small' - small-scale single cluster (up to 50 nodes). 'cce.s1.medium' - medium-scale single cluster (up to 200 nodes). 'cce.s2.small' - small-scale HA cluster (up to 50 nodes). 'cce.s2.medium' - medium-scale HA cluster (up to 200 nodes). 'cce.s2.large' - large-scale HA cluster (up to 1000 nodes). 'cce.s2.xlarge' - ultra-large-scale, high availability cluster (<= 2,000 nodes)."
+    kubeconfig_duration:
+      type: integer
+      required: false
+      default: "-1"
+      constraints:
+        - in_range: ["-1", 1825]
+      description: "Period during which the cluster certificate of the kubeconfig file is valid, in days. After this period, the kubeconfig file is invalid and kubectl client cannot use it to connect to the CCE cluster. The certificate can be valid for 1 to 1825 days. If this parameter is set to -1, the validity period is 1825 days (about 5 years). Default vault -1."
+    cluster_multi_az:
+      type: boolean
+      required: false
+      default: false
+      description: "Enable multiple AZs for the cluster, only when using HA flavors. Changing this parameter will create a new cluster resource."
+    node_availability_zone:
+      type: string
+      required: true
+      default: "az-01"
+      constraints:
+        - valid_values: ["az-01", "az-02", "az-03"]
+      description: "Specifies the name of the available partition (AZ). Changing this parameter will create a new resource."
+    node_flavor_id:
+      type: string
+      required: true
+      default: "s3.xlarge.2"
+      description: "Specifies the flavor id (e.g., 's3.xlarge.2'). Changing this parameter will create a new resource."
+    root_volume_size:
+      type: integer
+      required: true
+      default: 50
+      constraints:
+        - in_range: [40, 1024]
+      description: "Specifies size of the system disk. Changing this parameter will create a new resource."
+    data_volumes_size:
+      type: integer
+      required: true
+      default: 100
+      constraints:
+        - in_range: [20, 30768]
+      description: "Specifies size of the data disk. Changing this parameter will create a new resource."
+    argocd_access_with_elb:
+      type: boolean
+      required: false
+      default: false
+      description: "By default, the Argo CD API server is not exposed with an external IP. Enable this will path the service 'argocd-server' with type 'LoadBalancer' and you can access the Argo CD API server using the public IP address of the service."
+    argocd_app_name:
+      type: string
+      required: true
+      description: "Specify the name of the app to create."
+    argocd_repo:
+      type: string
+      required: true
+      description: "Specifies the URL of your Git repository for ArgoCD to sync. For example: https://github.com/argoproj/argocd-example-apps.git"
+    argocd_path:
+      type: string
+      required: true
+      default: "."
+      description: "Instruct Argo to search for Kubernetes manifests, Helm charts, and other deployable assets inside this path within your Git repository. Defaults to \".\" meaning the manifests are stored in the repository\u2019s root."
+    number_cce_nodes:
+      type: integer
+      required: false
+      default: 1
+      description: "Specify the number of CCE nodes to deploy with the given 'node_flavor_id'. To deploy a CCE node with a different flavor or availability zone, add a new CCE node in the designer."
+  node_templates:
+    Private:
+      metadata:
+        a4c_edit_x: "-463"
+        a4c_edit_y: "-93"
+      type: otc.nodes.Network.Private
+      properties:
+        admin_network: false
+        cidr: "10.0.0.0/24"
+        ip_version: 4
+    Compute_Port_0:
+      type: otc.nodes.Network.Port
+      properties:
+        is_default: false
+      requirements:
+        - linksToPrivateLink:
+            type_requirement: link
+            node: Private
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - linksToPublicLink:
+            type_requirement: link
+            node: Public
+            capability: tosca.capabilities.network.Linkable
+            relationship: tosca.relationships.network.LinksTo
+        - dependsOnSecuritygroupFeature:
+            type_requirement: dependency
+            node: SecurityGroup
+            capability: yorc.capabilities.SecurityGroup
+            relationship: tosca.relationships.DependsOn
+    BastionHost:
+      metadata:
+        a4c_edit_x: "-529"
+        a4c_edit_y: "-86"
+      type: otc.nodes.Compute
+      requirements:
+        - bindsToCompute_Port_0Binding:
+            type_requirement: binding
+            node: Compute_Port_0
+            capability: tosca.capabilities.network.Bindable
+            relationship: tosca.relationships.network.BindsTo
+      capabilities:
+        host:
+          properties:
+            gpu: false
+            num_cpus: 1
+            mem_size: "1 GB"
+        os:
+          properties:
+            architecture: "x86_64"
+            type: linux
+            distribution: ubuntu
+            version: 24.04
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    CCECluster:
+      metadata:
+        a4c_edit_x: "-263"
+        a4c_edit_y: "-86"
+      type: otc.nodes.cce.CCECluster
+      properties:
+        cluster_type: VirtualMachine
+        cluster_version: "v1.31"
+        multi_az: { get_input: cluster_multi_az }
+        flavor_id: { get_input: cluster_flavor_id }
+        container_network_type: "overlay_l2"
+        authentication_mode: rbac
+        kube_proxy_mode: ipvs
+        annotations:
+          cluster.install.addons.external/install: "[{\"addonTemplateName\":\"icagent\"}]"
+      requirements:
+        - cceClusterConnectToNetworkPrivateConnection:
+            type_requirement: network
+            node: Private
+            capability: tosca.capabilities.Connectivity
+            relationship: otc.relationships.CCEClusterConnectToNetwork
+    CCENode:
+      metadata:
+        a4c_edit_x: "-23"
+        a4c_edit_y: "-86"
+      type: otc.nodes.cce.CCENode
+      properties:
+        availability_zone: { get_input: node_availability_zone }
+        flavor_id: { get_input: node_flavor_id }
+        os: "HCE OS 2.0"
+        root_volume_size: { get_input: root_volume_size }
+        data_volumes_size: { get_input: data_volumes_size }
+      requirements:
+        - addNodeToCceClusterCceclusterCce_cluster:
+            type_requirement: add_to_cce_cluster
+            node: CCECluster
+            capability: otc.capabilities.CCECluster
+            relationship: otc.relationships.AddNodeToCCECluster
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 50
+            default_instances: { get_input: number_cce_nodes }
+    KubectlClient:
+      type: otc.nodes.k8s.KubectlClient
+      properties:
+        component_version: "1.30.0"
+        kubeconfig_duration: { get_input: kubeconfig_duration }
+      requirements:
+        - dependsOnCceclusterCce_cluster:
+            type_requirement: cce_cluster
+            node: CCECluster
+            capability: otc.capabilities.CCECluster
+            relationship: tosca.relationships.DependsOn
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: BastionHost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+    CustomSetup:
+      type: otc.nodes.SoftwareComponent.Bash
+      properties:
+        component_version: 1.0
+      requirements:
+        - dependsOnKubectlclientFeature:
+            type_requirement: dependency
+            node: KubectlClient
+            capability: otc.capabilities.KubectlClient
+            relationship: tosca.relationships.DependsOn
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: BastionHost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+        - dependsOnCcenodeFeature:
+            type_requirement: dependency
+            node: CCENode
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+      capabilities:
+        data_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+      artifacts:
+        configure:
+          file: artifacts/customsetup_configure.sh
+          type: tosca.artifacts.Implementation.Bash
+    SecurityGroup:
+      metadata:
+        a4c_edit_x: "-528"
+        a4c_edit_y: 307
+      type: yorc.nodes.SecurityGroup
+      properties:
+        name: "sg-bastionhost"
+        delete_default_rules: false
+    AllowSSH:
+      type: yorc.nodes.SecurityGroupRule
+      properties:
+        name: "allow-ssh"
+        protocol: tcp
+        direction: inbound
+        from_port: 22
+        to_port: 22
+        remote: "0.0.0.0/0"
+      requirements:
+        - secGroupRuleHostedOnSecGroupSecuritygroupHost:
+            type_requirement: host_on_security_group
+            node: SecurityGroup
+            capability: yorc.capabilities.SecurityGroupRules
+            relationship: yorc.relationships.SecGroupRuleHostedOnSecGroup
+    Helm:
+      type: otc.nodes.SoftwareComponent.Helm
+      properties:
+        component_version: "3.15.4"
+      requirements:
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: BastionHost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+    ArgoCD:
+      type: otc.nodes.SoftwareComponent.ArgoCD
+      properties:
+        chart_repo: "https://argoproj.github.io/argo-helm"
+        chart_version: "8.1.1"
+        chart_ref: "argo/argo-cd"
+        access_with_elb: { get_input: argocd_access_with_elb }
+      requirements:
+        - dependsOnKubectlClient:
+            type_requirement: depends_on_kubectlclient
+            node: KubectlClient
+            capability: otc.capabilities.KubectlClient
+            relationship: tosca.relationships.DependsOn
+        - hostedOnBastionhostHost:
+            type_requirement: host
+            node: BastionHost
+            capability: otc.capabilities.Compute
+            relationship: tosca.relationships.HostedOn
+        - dependsOnHelm:
+            type_requirement: depends_on_helm
+            node: Helm
+            capability: otc.capabilities.Helm
+            relationship: tosca.relationships.DependsOn
+        - dependsOnCcenodeFeature:
+            type_requirement: dependency
+            node: CCENode
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnSnatruleFeature:
+            type_requirement: dependency
+            node: SNATRule
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    NATGateway:
+      metadata:
+        a4c_edit_x: 243
+        a4c_edit_y: "-86"
+      type: otc.nodes.Network.NATGateway
+      properties:
+        spec: Small
+      requirements:
+        - networkOutgoingnetConnection:
+            type_requirement: network
+            node: OutgoingNet
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+    SNATRule:
+      type: otc.nodes.Network.SNATRule
+      properties:
+        cidr: "10.0.0.0/24"
+      requirements:
+        - hostedOnNatgatewayRules:
+            type_requirement: nat_gateway
+            node: NATGateway
+            capability: otc.capabilities.Container.NATRules
+            relationship: tosca.relationships.HostedOn
+    OutgoingNet:
+      metadata:
+        a4c_edit_x: "-901"
+        a4c_edit_y: "-277"
+      type: otc.nodes.Network.Private
+      properties:
+        admin_network: false
+        cidr: "10.0.1.0/24"
+        ip_version: 4
+    Public:
+      metadata:
+        a4c_edit_x: "-709"
+        a4c_edit_y: "-216"
+      type: otc.nodes.Network.Public
+      properties:
+        ip_version: 4
+    ArgoCDApp:
+      type: otc.nodes.SoftwareComponent.ArgoCDApp
+      properties:
+        app_name: { get_input: argocd_app_name }
+        repo: { get_input: argocd_repo }
+        revision: HEAD
+        path: { get_input: argocd_path }
+        dest_namespace: default
+      requirements:
+        - hostedOnArgocdApp:
+            type_requirement: host
+            node: ArgoCD
+            capability: otc.capabilities.Container.ArgoCDApp
+            relationship: tosca.relationships.HostedOn
+  outputs:
+    CCENode_server_id:
+      value: { get_attribute: [ CCENode, server_id ] }
+    CCENode_status:
+      value: { get_attribute: [ CCENode, status ] }
+    CCECluster_internal:
+      value: { get_attribute: [ CCECluster, internal ] }
+    CCECluster_external:
+      value: { get_attribute: [ CCECluster, external ] }
+    CCECluster_external_otc:
+      value: { get_attribute: [ CCECluster, external_otc ] }
+    CCECluster_id:
+      value: { get_attribute: [ CCECluster, id ] }
+    CCECluster_status:
+      value: { get_attribute: [ CCECluster, status ] }
+    BastionHost_public_address:
+      value: { get_attribute: [ BastionHost, public_address ] }
+    ArgoCD_elb_ip:
+      value: { get_attribute: [ ArgoCD, elb_ip ] }
+    ArgoCD_admin_password:
+      value: { get_attribute: [ ArgoCD, admin_password ] }

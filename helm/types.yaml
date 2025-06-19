@@ -1,0 +1,52 @@
+# Copyright (C) 2020 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.helm
+  template_version: 1.0.0
+  template_author: Tri
+
+description: Deploy Helm with specific version
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+
+node_types:
+  otc.nodes.SoftwareComponent.Helm:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      Use this component on the Bastionhost of the CCE template to deploy helm with specific version.
+      We will download the helm archive from the official website and extract the binary on the Bastionhost.
+    tags:
+      icon: /images/helm.png
+    properties:
+      component_version:
+        type: version
+        description: >
+          Specify the helm version to install. The version should be compatible with your k8s version. The default version 3.15.4 is compatible with k8s version 1.30.x - 1.27.x
+          See also: https://helm.sh/docs/topics/version_skew/
+        required: true
+        default: 3.15.4
+        constraints:
+          - greater_or_equal: 3.15
+    capabilities:
+      helm:
+        type: otc.capabilities.Helm
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            COMPONENT_VERSION: { get_property: [SELF, component_version] }
+          implementation: playbooks/helm-install.yaml
+
+capability_types:
+  otc.capabilities.Helm:
+    derived_from: tosca.capabilities.Node
+
+artifact_types:
+  otc.artifacts.ChartValuesYmlFile:
+    derived_from: tosca.artifacts.Root
+    description: values YAML file
+    file_ext: [ yml ] # Cannot use extension yaml, conflicts with the playbook extension
