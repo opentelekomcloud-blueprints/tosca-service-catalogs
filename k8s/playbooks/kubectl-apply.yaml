@@ -1,0 +1,11 @@
+- name: Create k8s resource
+  hosts: all
+  gather_facts: no
+  strategy: free
+  tasks:
+    - name: Apply the resource by reading the definition from the src_values artifact
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ src_values }}"
+        wait: "{{ WAIT }}"
+        wait_timeout: "{{ WAIT_TIMEOUT }}"

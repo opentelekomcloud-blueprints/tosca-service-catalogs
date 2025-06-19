@@ -1,0 +1,33 @@
+- name: Create ArgoCD Application from Git repository
+  hosts: all
+  gather_facts: no
+  vars:
+    app_namespace: argocd
+    destination_server: https://kubernetes.default.svc
+  tasks:
+    - name: Create ArgoCD Application
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: "{{ APP_NAME }}"
+            namespace: "{{ app_namespace }}"
+          spec:
+            project: default
+            source:
+              repoURL: "{{ REPO }}"
+              targetRevision: "{{ REVISION }}"
+              path: "{{ PATH }}"
+              directory:
+                recurse: true
+            destination:
+              server: "{{ destination_server }}"
+              namespace: "{{ DEST_NAMESPACE }}"
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true

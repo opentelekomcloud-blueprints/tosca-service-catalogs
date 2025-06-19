@@ -1,0 +1,42 @@
+- name: Install Helm if not present
+  hosts: all
+  vars:
+    helm_install_dir: "/usr/local/bin"
+  tasks:
+    - name: Check if Helm is already installed
+      command: helm version --short
+      register: helm_check
+      ignore_errors: true
+
+    - name: Download and install Helm if not installed
+      when: helm_check.rc != 0
+      block:
+        - name: Download Helm archive
+          get_url:
+            url: "https://get.helm.sh/helm-v{{ COMPONENT_VERSION }}-linux-amd64.tar.gz"
+            dest: "/tmp/helm-{{ COMPONENT_VERSION }}.tar.gz"
+            mode: '0644'
+
+        - name: Extract Helm archive
+          unarchive:
+            src: "/tmp/helm-{{ COMPONENT_VERSION }}.tar.gz"
+            dest: /tmp
+            remote_src: yes
+
+        - name: Move Helm binary to install directory
+          become: yes
+          copy:
+            src: "/tmp/linux-amd64/helm"
+            dest: "{{ helm_install_dir }}/helm"
+            mode: '0755'
+            remote_src: yes
+
+        - name: Clean up downloaded archive
+          file:
+            path: "/tmp/helm-{{ COMPONENT_VERSION }}.tar.gz"
+            state: absent
+
+        - name: Clean up extracted directory
+          file:
+            path: "/tmp/linux-amd64"
+            state: absent
