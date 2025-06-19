@@ -1,0 +1,103 @@
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.k8s
+  template_author: Tri
+  template_version: 1.0.1
+
+description: >
+  Provides node types for managing k8s resources
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.caas.cce:1.0.3
+
+node_types:
+  otc.nodes.k8s.KubectlClient:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      This component deploys a kubectl client on the compute node.
+      A kubeconfig file will be configured to connect to the CCE cluster, which is in the same application.
+    tags:
+      icon: /images/k8sclient.png
+    properties:
+      component_version:
+        type: version
+        description: >
+          The optional k8s client’s version (e.g., '1.30.0'). If not set, we will use the latest stable version from the kubernetes official releases.
+        required: false
+      kubeconfig_duration:
+        type: integer
+        constraints:
+          - in_range: [ -1, 1825 ]
+        default: -1
+        description: >
+          Period during which the cluster certificate of the kubeconfig file is valid, in days. After this period, the kubeconfig file is invalid and kubectl client cannot use it to connect to the CCE cluster.
+          The certificate can be valid for 1 to 1825 days. If this parameter is set to -1, the validity period is 1825 days (about 5 years). If this parameter is set to 0, we will not create the kubeconfig file. Default value -1.
+        required: false
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            KUBECONFIG: { get_secret: [kubeconfig] }
+            KUBECTL_VERSION: { get_property: [SELF, component_version] }
+          implementation: playbooks/kubectl-client-configure.yaml
+    capabilities:
+      kubectl_client:
+        type: otc.capabilities.KubectlClient
+    requirements:
+      - cce_cluster:
+          description: KubectlClient depends on a CCE cluster before it can start the setup
+          capability: otc.capabilities.CCECluster
+          relationship: tosca.relationships.DependsOn
+          occurrences: [ 1, 1 ]
+
+  otc.nodes.k8s.K8sResource:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      This component applies the k8s resource definition, which you defines in the artifact 'src_values', on the k8s cluster.
+      Delete this component will not delete your defined k8s resources (currently not support).
+    tags:
+      icon: /images/k8sclient.png
+    properties:
+      wait:
+        type: boolean
+        description: >
+          Enable to wait for the Deployment, DaemonSet and Pod to end up in the state=present. The default value is not to wait.
+        default: false
+        required: true
+      wait_timeout:
+        type: integer
+        description: >
+          If wait is enabled, specify how long in seconds to wait for the resource to end up in the state=present.
+          Defaults to 120 seconds.
+        default: 120
+        required: false
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            WAIT: { get_property: [SELF, wait] }
+            WAIT_TIMEOUT: { get_property: [SELF, wait_timeout] }
+          implementation: playbooks/kubectl-apply.yaml
+    requirements:
+      - depends_on_kubectlclient:
+          description: K8sResource requires KubectlClient to apply the resource.
+          capability: otc.capabilities.KubectlClient
+          relationship: tosca.relationships.DependsOn
+          occurrences: [ 1, 1 ]
+    artifacts:
+      - src_values:
+          type: otc.artifacts.K8sDefinitionYmlFile
+          file: default/values.yml
+          description: Specify the YAML definition of K8s objects to be created or updated.
+
+capability_types:
+  otc.capabilities.KubectlClient:
+    derived_from: tosca.capabilities.Node
+
+artifact_types:
+  otc.artifacts.K8sDefinitionYmlFile:
+    derived_from: tosca.artifacts.Root
+    description: values YAML file
+    file_ext: [ yml ] # Cannot use extension yaml, conflicts with the playbook extension

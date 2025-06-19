@@ -1,0 +1,136 @@
+# Copyright (C) 2025 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.argocd
+  template_version: 1.0.1
+  template_author: Tri
+
+description: Software components to deploy ArgoCD and its app.
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.servicecatalogs.helm:1.0.0
+  - otc.servicecatalogs.k8s:1.0.1
+
+node_types:
+  otc.nodes.SoftwareComponent.ArgoCD:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      This component deploys ArgoCD on the k8s cluster of the application.
+      It uses the community maintained helm chart to deploy ArgoCD.
+      You can click on the artifact 'values_yaml_file' to customize the default helm chart values.
+    tags:
+      icon: /images/argocd.png
+    attributes:
+      admin_password: { get_operation_output: [SELF, Standard, create, ADMIN_PASSWORD] }
+      elb_ip: { get_operation_output: [SELF, Standard, create, ELB_IP] }
+    properties:
+      chart_repo:
+        type: string
+        description: Specify the URL of the Helm chart to install ArgoCD. The default value uses the community maintained chart.
+        default: "https://argoproj.github.io/argo-helm"
+        required: true
+      chart_version:
+        type: version
+        description: Specfiy the version of the chart_repo to install ArgoCD.
+        default: 8.1.1
+        required: true
+      chart_ref:
+        type: string
+        description: Chart reference on chart repository.
+        default: "argo/argo-cd"
+        required: true
+      access_with_elb:
+        type: boolean
+        description: >
+          By default, the Argo CD API server is not exposed with an external IP.
+          Enable this will update the service 'argocd-server' with type the 'LoadBalancer' and you can access the Argo CD API server using the public IP address of the service.
+        default: false
+        required: false
+    capabilities:
+      app:
+        type: otc.capabilities.Container.ArgoCDApp
+        occurrences: [0, unbounded]
+    requirements:
+      - depends_on_helm:
+          description: ArgoCD requires Helm because we use Helm to install ArgoCD.
+          capability: otc.capabilities.Helm
+          relationship: tosca.relationships.DependsOn
+          occurrences: [ 1, 1 ]
+      - depends_on_kubectlclient:
+          description: ArgoCD requires KubectlClient to create.
+          capability: otc.capabilities.KubectlClient
+          relationship: tosca.relationships.DependsOn
+          occurrences: [ 1, 1 ]
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            CHART_REPO: { get_property: [SELF, chart_repo] }
+            CHART_REF: { get_property: [SELF, chart_ref] }
+            CHART_VERSION: { get_property: [SELF, chart_version] }
+            ACCESS_WITH_ELB: { get_property: [SELF, access_with_elb] }
+          implementation: playbooks/argocd-install.yaml
+    artifacts:
+      - chart_values:
+          type: otc.artifacts.ChartValuesYmlFile
+          file: default/values.yml
+          description: Specify the chart values to configure ArgoCD
+
+  otc.nodes.SoftwareComponent.ArgoCDApp:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      Use this component on the ArgoCD component to create an ArgoCD app from the given Git repository.
+      Remove this ArgoCDApp component from the topology will not remove the app from ArgoCD (currently not support).
+    tags:
+      icon: /images/argocd.png
+    properties:
+      app_name:
+        type: string
+        description: Specify the name of the app to create.
+        required: true
+      repo:
+        type: string
+        description: >
+          Specifies the URL of your Git repository for ArgoCD to sync. For example: https://github.com/argoproj/argocd-example-apps.git
+        required: true
+      revision:
+        type: string
+        description: The tracking source branch, tag, commit or Helm chart version the application will sync to. The default value HEAD uses the latest change on the default branch of the repository.
+        default: HEAD
+        required: true
+      path:
+        type: string
+        description: >
+          Instruct ArgoCD to search for Kubernetes manifests, Helm charts, and other deployable assets inside this path within your Git repository.
+          Defaults to "." meaning the manifests are stored in the repository’s root.
+        default: "."
+        required: true
+      dest_namespace:
+        type: string
+        description: >
+          K8s target namespace where app manifests will be deployed. Defaults to the 'default' namespace.
+        default: default
+        required: true
+    requirements:
+      - host:
+          capability: otc.capabilities.Container.ArgoCDApp
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            APP_NAME: { get_property: [SELF, app_name] }
+            REPO: { get_property: [SELF, repo] }
+            REVISION: { get_property: [SELF, revision] }
+            PATH: { get_property: [SELF, path] }
+            DEST_NAMESPACE: { get_property: [SELF, dest_namespace] }
+          implementation: playbooks/argocd-app-create.yaml
+
+capability_types:
+  otc.capabilities.Container.ArgoCDApp:
+    derived_from: tosca.capabilities.Container
