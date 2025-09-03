@@ -1,5 +1,9 @@
 # Changelog
 
+## 03.09.2025
+
+* Add templates CCE and ArgoCD.
+
 ## 11.06.2025
 
 * Fixed deployment of Nextcloud template failed because Ubuntu 20.04 is end of life:
