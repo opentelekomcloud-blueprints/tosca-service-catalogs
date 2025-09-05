@@ -86,17 +86,20 @@ topology_template:
     argocd_app_name:
       type: string
       required: true
-      description: "Specify the name of the app to create."
+      description: >
+        Specify the name of the app to create. For example: 'sock-shop'.
     argocd_repo:
       type: string
       required: true
-      description: "Specifies the URL of your Git repository for ArgoCD to sync. For example: https://github.com/opentelekomcloud-blueprints/argocd-example-apps.git"
-      default: "https://github.com/opentelekomcloud-blueprints/argocd-example-apps.git"
+      description: >
+        Specifies the URL of your Git repository for ArgoCD to sync. For example: 'https://github.com/opentelekomcloud-blueprints/argocd-example-apps.git'.
     argocd_path:
       type: string
       required: true
-      default: "sock-shop"
-      description: "Instruct Argo to search for Kubernetes manifests, Helm charts, and other deployable assets inside this path within your Git repository. Set to \".\" meaning the manifests are stored in the repository\u2019s root."
+      description: >
+        Instruct Argo to search for Kubernetes manifests and other deployable assets inside this path within your Git repository.
+        Set to '.' meaning the manifests are stored in the repository's root.
+        For example: 'sock-shop'.
     number_cce_nodes:
       type: integer
       required: false
