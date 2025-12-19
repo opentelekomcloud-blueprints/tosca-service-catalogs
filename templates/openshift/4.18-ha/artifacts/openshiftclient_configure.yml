@@ -1,6 +1,6 @@
 - name: Download openshift-client
   get_url:
-    url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.27/openshift-client-linux.tar.gz"
+    url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.30/openshift-client-linux.tar.gz"
     dest: "{{ openshift_dir }}/openshift-client-linux.tar.gz"
     mode: 0640
 - name: Unarchive openshift-client

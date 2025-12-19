@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: OpenShift HA
-  template_version: 4.18.27
+  template_version: 4.18.30
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/openshift.html"
   template_images:
@@ -104,14 +104,14 @@ topology_template:
     OpenShiftInstall:
       type: otc.nodes.SoftwareComponent.OpenShiftInstall
       properties:
-        component_version: "4.18.27"
+        component_version: "4.18.30"
         base_domain: { get_input: base_domain }
         cluster_name: { get_input: cluster_name }
         cluster_network: "10.128.0.0/14"
         machine_network: "10.0.0.0/16"
         service_network: "172.30.0.0/16"
         network_type: OVNKubernetes
-        openshift_install_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.27/openshift-install-linux.tar.gz"
+        openshift_install_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.30/openshift-install-linux.tar.gz"
         cluster_os_image: "rhcos-418.94.202501221327-0-openstack.x86_64"
         pull_secret: { get_secret: [pull_secret] }
         os_password: { get_secret: [os_password] }

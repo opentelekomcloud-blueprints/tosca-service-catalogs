@@ -2,7 +2,7 @@
 
 ## 19.12.2025
 
-* Add template OpenShift `4.18.27`.
+* Add template OpenShift `4.18.30`.
 
 ## 03.09.2025
 
