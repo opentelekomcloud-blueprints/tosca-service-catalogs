@@ -1,0 +1,14 @@
+- name: Check status until it is COMPLETED
+  command: cat /home/ubuntu/openshift/status
+  register: file_content
+  until: file_content.stdout == "COMPLETED"
+  retries: 90  # 15 minutes
+  delay: 10
+  ignore_errors: true
+- debug:
+    msg: OpenShift installation COMPLETED. All cluster operators are up and running.
+  when: file_content.stdout == "COMPLETED"
+- name: Check status failed
+  fail:
+    msg: OpenShift installation not completed after checking status. Read our document on how to troubleshoot the issue.
+  when: file_content.stdout != "COMPLETED"

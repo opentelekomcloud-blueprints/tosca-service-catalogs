@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.12.2025
+
+* Add template OpenShift `4.18.27`.
+
 ## 03.09.2025
 
 * Add templates CCE and ArgoCD.
