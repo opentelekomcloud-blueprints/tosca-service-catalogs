@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: ArgoCD
-  template_version: 3.0.6
+  template_version: 3.3.9
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/argocd.html"
   template_images:
@@ -188,7 +188,7 @@ topology_template:
       type: otc.nodes.cce.CCECluster
       properties:
         cluster_type: VirtualMachine
-        cluster_version: "v1.31"
+        cluster_version: "v1.33"
         multi_az: { get_input: cluster_multi_az }
         flavor_id: { get_input: cluster_flavor_id }
         container_network_type: "overlay_l2"
@@ -228,7 +228,7 @@ topology_template:
     KubectlClient:
       type: otc.nodes.k8s.KubectlClient
       properties:
-        component_version: "1.30.0"
+        component_version: "1.33.0"
         kubeconfig_duration: { get_input: kubeconfig_duration }
       requirements:
         - dependsOnCceclusterCce_cluster:
@@ -309,7 +309,7 @@ topology_template:
       type: otc.nodes.SoftwareComponent.ArgoCD
       properties:
         chart_repo: "https://argoproj.github.io/argo-helm"
-        chart_version: "8.1.1"
+        chart_version: "9.5.11"
         chart_ref: "argo/argo-cd"
         access_with_elb: { get_input: argocd_access_with_elb }
       requirements:
@@ -338,6 +338,10 @@ topology_template:
             node: SNATRule
             capability: tosca.capabilities.Node
             relationship: tosca.relationships.DependsOn
+      artifacts:
+        chart_values:
+          file: artifacts/argocd_chart_values.yml
+          type: otc.artifacts.ChartValuesYmlFile
     NATGateway:
       metadata:
         a4c_edit_x: 243
