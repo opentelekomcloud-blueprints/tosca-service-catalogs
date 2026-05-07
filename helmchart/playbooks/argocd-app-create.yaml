@@ -1,0 +1,38 @@
+- name: Create a Helm app in ArgoCD
+  hosts: all
+  gather_facts: no
+  vars:
+    destination_server: https://kubernetes.default.svc
+  tasks:
+    - name: Read values.yaml
+      ansible.builtin.slurp:
+        src: "{{ chart_values }}"
+      register: helm_values_raw
+
+    - name: Create a Helm app
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: "{{ APP_NAME }}"
+            namespace: argocd
+          spec:
+            project: default
+            source:
+              repoURL: "{{ REPO }}"
+              chart: "{{ HELM_CHART | default(omit) }}" # not needed if path is given
+              path: "{{ PATH | default(omit) }}" # not needed if chart is given
+              targetRevision: "{{ REVISION }}"
+              helm:
+                values: "{{ helm_values_raw.content | b64decode }}"
+            destination:
+              server: "{{ destination_server }}"
+              namespace: "{{ DEST_NAMESPACE | default(APP_NAME, true) }}"
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
