@@ -1,0 +1,83 @@
+# Copyright (C) 2025 Open Telekom Cloud - T-Systems International GmbH.
+# Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
+
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: otc.servicecatalogs.helmchart
+  template_version: 0.0.4 # Bump this version to 1.0.0 when ready for production
+  template_author: Tri
+
+description: Software components to deploy a helm chart
+
+imports:
+  - tosca-normative-types:1.0.0-ALIEN20
+  - otc.servicecatalogs.helm:1.0.0
+  - otc.servicecatalogs.argocd:1.0.1
+
+node_types:
+  otc.nodes.SoftwareComponent.HelmChart:
+    derived_from: tosca.nodes.SoftwareComponent
+    description: >
+      Use this component on the ArgoCD to deploy a helm chart from a Git or a helm repository.
+      Remove this component from the topology will remove the helm chart from ArgoCD.
+    tags:
+      icon: /images/helmchart.png
+    properties:
+      app_name:
+        type: string
+        description: Specify the name of the app to create in ArgoCD.
+        required: true
+      repo:
+        type: string
+        description: >
+          Repository URL. This can be a Git repository (e.g., 'https://github.com/argoproj/argocd-example-apps.git') or a Helm repository (e.g., 'https://kubernetes.github.io/ingress-nginx')
+        required: true
+      path:
+        type: string
+        description: >
+          Instruct ArgoCD to search for Helm charts inside this path within the Git repository.
+          If 'repo' is a Git repository, this property must be specified but not the 'helm_chart' property.
+          Set to "." meaning the manifests are stored in the repository’s root.
+        required: false
+      helm_chart:
+        type: string
+        description: >
+          Specify the Helm Chart name from the Helm repository.
+          If 'repo' is a Helm repository, this property must be specified but not the 'path' property.
+        required: false
+      revision:
+        type: string
+        description: The tracking source branch, tag, commit or Helm chart version the application will sync to. The default value HEAD uses the latest change on the default branch of the repository.
+        default: HEAD
+        required: true
+      dest_namespace:
+        type: string
+        description: The namespace where the application will be deployed. If not specified, the application will be deployed to the same namespace as the app name.
+        default: ""
+        required: false      
+    requirements:
+      - host:
+          capability: otc.capabilities.Container.ArgoCDApp
+          relationship: tosca.relationships.HostedOn
+          occurrences: [1, 1]
+    interfaces:
+      Standard:
+        configure:
+          inputs:
+            APP_NAME: { get_property: [SELF, app_name] }
+            REPO: { get_property: [SELF, repo] }
+            PATH: { get_property: [SELF, path] }
+            HELM_CHART: { get_property: [SELF, helm_chart] }
+            REVISION: { get_property: [SELF, revision] }
+            DEST_NAMESPACE: { get_property: [SELF, dest_namespace] }
+          implementation: playbooks/argocd-app-create.yaml
+        delete:
+          inputs:
+            APP_NAME: { get_property: [SELF, app_name] }
+          implementation: playbooks/argocd-app-remove.yaml
+    artifacts:
+      - chart_values:
+          type: otc.artifacts.ChartValuesYmlFile
+          file: default/values.yml
+          description: Specify the chart values

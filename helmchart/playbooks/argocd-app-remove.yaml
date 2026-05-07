@@ -1,0 +1,13 @@
+- name: Remove Helm from ArgoCD
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Remove Helm from ArgoCD
+      kubernetes.core.k8s:
+        state: absent
+        definition:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: "{{ APP_NAME }}"
+            namespace: argocd
