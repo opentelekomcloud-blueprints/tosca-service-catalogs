@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.helmchart
-  template_version: 0.0.4 # Bump this version to 1.0.0 when ready for production
+  template_version: 0.0.5 # Bump this version to 1.0.0 when ready for production
   template_author: Tri
 
 description: Software components to deploy a helm chart
@@ -27,6 +27,8 @@ node_types:
       app_name:
         type: string
         description: Specify the name of the app to create in ArgoCD.
+        constraints:
+          - pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         required: true
       repo:
         type: string
@@ -54,7 +56,8 @@ node_types:
       dest_namespace:
         type: string
         description: The namespace where the application will be deployed. If not specified, the application will be deployed to the same namespace as the app name.
-        default: ""
+        constraints:
+          - pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         required: false      
     requirements:
       - host:
