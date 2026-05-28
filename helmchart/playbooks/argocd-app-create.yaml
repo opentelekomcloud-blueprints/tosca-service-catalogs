@@ -8,6 +8,7 @@
       ansible.builtin.slurp:
         src: "{{ chart_values }}"
       register: helm_values_raw
+      no_log: true
 
     - name: Create a Helm app
       kubernetes.core.k8s:
@@ -18,6 +19,7 @@
           metadata:
             name: "{{ APP_NAME }}"
             namespace: argocd
+            finalizers: "{{ ['resources-finalizer.argocd.argoproj.io'] if CASCADE_DELETE | default(true) | bool else omit }}"
           spec:
             project: default
             source:

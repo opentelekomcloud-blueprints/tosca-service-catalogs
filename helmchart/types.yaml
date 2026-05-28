@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.helmchart
-  template_version: 0.0.5 # Bump this version to 1.0.0 when ready for production
+  template_version: 0.0.9
   template_author: Tri
 
 description: Software components to deploy a helm chart
@@ -34,6 +34,8 @@ node_types:
         type: string
         description: >
           Repository URL. This can be a Git repository (e.g., 'https://github.com/argoproj/argocd-example-apps.git'), Helm repository (e.g., 'https://kubernetes.github.io/ingress-nginx') or a OCI repository (e.g., 'oci://ghcr.io/backstage/charts/backstage')
+        constraints:
+          - pattern: "^(https?|oci)://.+"
         required: true
       path:
         type: string
@@ -55,10 +57,18 @@ node_types:
         required: true
       dest_namespace:
         type: string
-        description: The namespace where the application will be deployed. If not specified, the application will be deployed to the same namespace as the app name.
+        description: Specify the ArgoCD deployment target namespace for the Helm chart application. If not specified, the application will be deployed to the same namespace as the app name.
         constraints:
           - pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-        required: false      
+        required: false
+      cascade_delete:
+        type: boolean
+        description: >
+          If true, removing this component will also delete all Kubernetes resources
+          managed by the ArgoCD application. If false, only the ArgoCD application
+          tracking object is removed and the deployed resources are orphaned.
+        default: true
+        required: false
     requirements:
       - host:
           capability: otc.capabilities.Container.ArgoCDApp
@@ -74,6 +84,7 @@ node_types:
             HELM_CHART: { get_property: [SELF, helm_chart] }
             REVISION: { get_property: [SELF, revision] }
             DEST_NAMESPACE: { get_property: [SELF, dest_namespace] }
+            CASCADE_DELETE: { get_property: [SELF, cascade_delete] }
           implementation: playbooks/argocd-app-create.yaml
         delete:
           inputs:
