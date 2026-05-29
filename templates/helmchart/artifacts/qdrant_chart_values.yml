@@ -1,0 +1,61 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/qdrant/qdrant
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+apiKey: "changeme"
+readOnlyApiKey: "changeme"
+
+service:
+  # Auto create an ELB on T-Cloud Public to access qdrant
+  type: LoadBalancer
+  annotations:
+    kubernetes.io/elb.class: union
+    kubernetes.io/elb.autocreate: '{"type":"public","bandwidth_name":"qdrant-elb","bandwidth_chargemode":"traffic","bandwidth_size":100,"bandwidth_sharetype":"PER","eip_type":"5_bgp"}'
+  ports:
+    - name: https
+      port: 6333
+      targetPort: 6333
+      protocol: TCP
+    - name: grpc
+      port: 6334
+      targetPort: 6334
+      protocol: TCP
+  # First we init without tls, the script PostConfigQdrant will enable it afterwards
+  service:
+    enable_tls: false
+
+ingress:
+  enabled: false
+
+persistence:
+  enabled: true
+  storageClassName: "csi-disk" # Use storage class from T-Cloud Public
+  accessMode: ["ReadWriteOnce"]
+  size: 10Gi
+
+config:
+  cluster:
+    enabled: false
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+
+metrics:
+  serviceMonitor:
+    enabled: false
