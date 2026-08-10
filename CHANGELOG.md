@@ -1,5 +1,13 @@
 # Changelog
 
+## 10.08.2026
+
+* Add a BootVolume of '20 GB' to the NextCloud template to fix not enough disk space on the Compute node.
+
+## 22.10.2025
+
+* Add service catalog `HelmChart` with version `1.0.0`.
+
 ## 19.12.2025
 
 * Add template OpenShift `4.18.30`.

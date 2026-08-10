@@ -18,17 +18,27 @@
     - name: First setup nextcloud
       become: true
       become_user: "www-data"
-      shell: >
-        php occ maintenance:install
-        --database mysql
-        --database-host "{{ MYSQL_HOST }}"
-        --database-name {{ MYSQL_DB }}
-        --database-user {{ MYSQL_USER }}
-        --database-pass {{ MYSQL_PASSWORD }}
-        --admin-user {{ ADMIN_USER }}
-        --admin-pass {{ admin_password }}
-        --data-dir {{ DATADIR }}
-      args:
+      command:
+        argv:
+          - php
+          - occ
+          - maintenance:install
+          - --database
+          - mysql
+          - --database-host
+          - "{{ MYSQL_HOST }}"
+          - --database-name
+          - "{{ MYSQL_DB }}"
+          - --database-user
+          - "{{ MYSQL_USER }}"
+          - --database-pass
+          - "{{ MYSQL_PASSWORD }}"
+          - --admin-user
+          - "{{ ADMIN_USER }}"
+          - --admin-pass
+          - "{{ admin_password }}"
+          - --data-dir
+          - "{{ DATADIR }}"
         chdir: "{{ DOCUMENT_ROOT }}"
         creates: "{{ DOCUMENT_ROOT }}/config/config.php"
       no_log: true
