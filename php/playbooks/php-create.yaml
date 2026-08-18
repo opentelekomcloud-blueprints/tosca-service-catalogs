@@ -34,11 +34,11 @@
     - name: Set disable Opcache
       set_fact:
         php_opcache_enable: "0"
-      when: PHP_OPCACHE_ENABLE == 'false'
+      when: not (PHP_OPCACHE_ENABLE | bool)
     - name: Define PHP repo for RedHat OS family
       include_role:
         name: geerlingguy.repo-remi
-      when: ansible_os_family == 'RedHat'
+      when: ansible_facts['os_family'] == 'RedHat'
     - name: Add repository for PHP versions
       import_role:
         name: geerlingguy.php-versions

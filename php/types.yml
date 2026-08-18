@@ -5,11 +5,11 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.php
-  template_version: 1.1.1
+  template_version: 1.1.2
   template_author: Tri
 
 description: >
-  Installs PHP on RedHat/CentOS and Debian/Ubuntu servers using Ansible role geerlingguy/ansible-role-php (Tag 6.0.0).
+  Installs PHP on RedHat/CentOS and Debian/Ubuntu servers using Ansible role geerlingguy/ansible-role-php (Tag 6.1.0).
   This role only works with PHP versions that are currently supported by the PHP community.
   See also: https://www.php.net/supported-versions.php
 

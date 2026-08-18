@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.apache
-  template_version: 1.0.0
+  template_version: 1.0.1
   template_author: Tri
 
 description: Apache webserver
@@ -102,8 +102,8 @@ node_types:
           See the mods-available directory inside the apache configuration directory (/etc/apache2/mods-available) for all the available mods.
         required: false
         default:
-          - 'rewrite.load'
-          - 'ssl.load'
+          - 'rewrite'
+          - 'ssl'
       component_version:
         type: version
         description: (Not supported) The installation uses the Apache version available in the OS's core repositories.

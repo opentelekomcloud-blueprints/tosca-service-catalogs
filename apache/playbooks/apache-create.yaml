@@ -37,7 +37,7 @@
     - name: Set apache_vhosts_ssl using auto-genated selfsigned certificate file
       block:
         - name: Include OS-specific variables.
-          include_vars: "{{ ansible_os_family }}.yml"
+          include_vars: "{{ ansible_facts['os_family'] }}.yml"
         - name: Create apache group
           become: true
           group:

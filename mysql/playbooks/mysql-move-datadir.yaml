@@ -35,7 +35,7 @@
             name: apparmor
             state: reloaded
       when:
-        - ansible_os_family == 'Debian'
+        - ansible_facts['os_family'] == 'Debian'
     - name: Configure Selinux
       block:
         - name: Set SELinux context for new MySQL directory if SElinux is enabled
@@ -45,13 +45,13 @@
             setype: mysqld_db_t
             state: present
           register: mysql_dir
-          when: ansible_selinux is defined and ansible_selinux != False and ansible_selinux.status == 'enabled'
+          when: ansible_facts['selinux'] is defined and ansible_facts['selinux'] != False and ansible_facts['selinux'].status == 'enabled'
         - name: Apply new SELinux context for new MySQL directory
           become: true
           command: "restorecon -irv {{ LOCATION }}/mysql"
           when: mysql_dir.changed
       when:
-        - ansible_os_family == 'RedHat'
+        - ansible_facts['os_family'] == 'RedHat'
     - name: Output new data dir for MySQLServer config
       set_fact:
         DATADIR: "{{ LOCATION }}/mysql"

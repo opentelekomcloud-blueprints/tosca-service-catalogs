@@ -15,15 +15,15 @@ description: >
   This template deploys NextCloud app (version 28) on Open Telekom Cloud using Object Storage and Relational Database Service as the storage back-end and the MySQL Server, respectively.
 
 imports:
-  - otc.servicecatalogs.php:1.1.1
+  - otc.servicecatalogs.php:1.1.2
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.servicecatalogs.apache:1.0.0
-  - otc.servicecatalogs.mysql:1.1.1
+  - otc.servicecatalogs.apache:1.0.1
+  - otc.servicecatalogs.mysql:1.1.2
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.1
-  - otc.paas.rds:1.0.6
-  - otc.servicecatalogs.nextcloud:1.2.2
+  - otc.paas.rds:1.0.7
+  - otc.servicecatalogs.nextcloud:1.2.3
 
 topology_template:
   inputs:
@@ -130,15 +130,15 @@ topology_template:
         ssl_protocol: "All -SSLv2 -SSLv3"
         ssl_cipher_suite: "AES256+EECDH:AES256+EDH"
         mods_enabled:
-          - "rewrite.load"
-          - "ssl.load"
-          - "headers.load"
-          - "env.load"
-          - "dir.load"
-          - "mime.load"
-          - "setenvif.load"
-          - "proxy.load"
-          - "proxy_fcgi.load"
+          - "rewrite"
+          - "ssl"
+          - "headers"
+          - "env"
+          - "dir"
+          - "mime"
+          - "setenvif"
+          - "proxy"
+          - "proxy_fcgi"
       requirements:
         - hostedOnComputeHost:
             type_requirement: host
