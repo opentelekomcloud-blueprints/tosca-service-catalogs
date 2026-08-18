@@ -1,5 +1,9 @@
 # Changelog
 
+## 18.08.2026
+
+* Update php, apache, mysql, nextcloud for ansible-core version 2.20.0
+
 ## 10.08.2026
 
 * Add a BootVolume of '20 GB' to the NextCloud template to fix not enough disk space on the Compute node.
