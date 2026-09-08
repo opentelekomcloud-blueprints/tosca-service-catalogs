@@ -2,7 +2,8 @@
 
 ## 18.08.2026
 
-* Update php, apache, mysql, nextcloud for ansible-core version 2.20.0
+* Update php, apache, mysql, nextcloud, openshift for ansible-core version 2.20.0
+* Bump version of OpenShift from 4.18.30 to 4.18.54
 
 ## 10.08.2026
 

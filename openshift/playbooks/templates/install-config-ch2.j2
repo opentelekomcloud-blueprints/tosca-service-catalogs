@@ -55,5 +55,5 @@ platform:
     ingressVIPs:
     - 10.0.0.7  # fixed input
 publish: External
-pullSecret: '{{ pull_secret | tojson }}'
+pullSecret: '{{ pull_secret | from_json | tojson }}'
 sshKey: '{{ ssh_public_key }}'

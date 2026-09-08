@@ -40,12 +40,16 @@
         src: install-config.j2
         dest: "{{ openshift_dir }}/install-config.yaml"
         mode: 0640
+      # Renders the pull secret: keep its content out of the Ansible output
+      no_log: true
       when: os_project_name is not match("eu-ch2.*")
     - name: Create clouds.yml for Open Telekom Cloud
       template:
         src: clouds.j2
         dest: "{{ openshift_dir }}/clouds.yml"
         mode: 0640
+      # Renders OpenStack credentials: keep their content out of the Ansible output
+      no_log: true
       when: os_project_name is not match("eu-ch2.*")
     # Config for Swiss Open Telekom Cloud
     - name: Create install-config.yaml for Swiss Open Telekom Cloud
@@ -53,12 +57,16 @@
         src: install-config-ch2.j2
         dest: "{{ openshift_dir }}/install-config.yaml"
         mode: 0640
+      # Renders the pull secret: keep its content out of the Ansible output
+      no_log: true
       when: os_project_name is match("eu-ch2.*")
     - name: Create clouds.yml for Swiss Open Telekom Cloud
       template:
         src: clouds-ch2.j2
         dest: "{{ openshift_dir }}/clouds.yml"
         mode: 0640
+      # Renders OpenStack credentials: keep their content out of the Ansible output
+      no_log: true
       when: os_project_name is match("eu-ch2.*")
     # End config
     - name: Add OpenShift API domain to /etc/hosts
