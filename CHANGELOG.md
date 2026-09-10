@@ -1,5 +1,10 @@
 # Changelog
 
+## 10.09.2026
+
+* Fix spurious vars_files warning in AnsibleTasks:1.1.1 for ansible-core 2.19
+* Update OpenShift templates to use AnsibleTasks:1.1.1
+
 ## 18.08.2026
 
 * Update php, apache, mysql, nextcloud, openshift for ansible-core version 2.20.0

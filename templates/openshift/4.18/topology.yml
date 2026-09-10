@@ -19,7 +19,7 @@ description: >
 imports:
   - otc.servicecatalogs.openshift:1.0.8
   - tosca-normative-types:1.0.0-ALIEN20
-  - otc.paas.scripts.ansible.tasks:1.1.0
+  - otc.paas.scripts.ansible.tasks:1.1.1
   - yorc-types:1.1.5
   - otc-iaas:1.0.4
   - otc-yorc:1.0.0

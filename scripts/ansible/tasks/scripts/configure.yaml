@@ -3,7 +3,10 @@
   gather_facts: yes
   become: "{{ ANSIBLE_BECOME }}"
   ignore_errors: "{{ IGNORE_ERRORS }}"
-  vars_files:
-    - "{{ ansible_variables }}"
+  pre_tasks:
+    - name: Load user-supplied ansible variables
+      include_vars: "{{ ansible_variables }}"
+      when: ansible_variables is defined
+      ignore_errors: false
   tasks:
     - include_tasks: "{{ configure }}"
