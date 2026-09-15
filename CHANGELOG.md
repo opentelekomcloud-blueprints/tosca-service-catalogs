@@ -1,5 +1,11 @@
 # Changelog
 
+## 15.09.2026
+
+* Improve `openshift_checks.sh` for bootstrap monitoring
+* Set the default spec of NAT Gateway in OpenShift template from `Small` to `Medium`.
+* Bump version of OpenShift from 4.18.54 to 4.18.55
+
 ## 10.09.2026
 
 * Fix spurious vars_files warning in AnsibleTasks:1.1.1 for ansible-core 2.19
@@ -7,7 +13,7 @@
 
 ## 18.08.2026
 
-* Update php, apache, mysql, nextcloud, openshift for ansible-core version 2.20.0
+* Update php, apache, mysql, nextcloud, openshift for ansible-core version 2.20
 * Bump version of OpenShift from 4.18.30 to 4.18.54
 
 ## 10.08.2026

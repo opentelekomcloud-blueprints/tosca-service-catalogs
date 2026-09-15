@@ -5,7 +5,7 @@ tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
   template_name: otc.servicecatalogs.openshift
-  template_version: 1.0.8
+  template_version: 1.0.9
   template_author: Tri
 
 description: Openshift
@@ -90,7 +90,7 @@ node_types:
         description: >
           The URL to download the openshift-install.
         required: true
-        default: 'https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.13.13/openshift-install-linux.tar.gz'
+        default: 'https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.55/openshift-install-linux.tar.gz'
       cluster_os_image:
         type: string
         description: >

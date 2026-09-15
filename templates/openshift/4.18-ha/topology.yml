@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: OpenShift HA
-  template_version: 4.18.54
+  template_version: 4.18.55
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/openshift.html"
   template_images:
@@ -21,7 +21,7 @@ imports:
   - otc.paas.scripts.ansible.tasks:1.1.1
   - otc-iaas:1.0.4
   - otc-yorc:1.0.0
-  - otc.servicecatalogs.openshift:1.0.8
+  - otc.servicecatalogs.openshift:1.0.9
   - otc.paas.scripts.common:1.0.0
 
 topology_template:
@@ -69,7 +69,7 @@ topology_template:
     nat_gateway_spec:
       type: string
       required: true
-      default: Small
+      default: Medium
       constraints:
         - valid_values: [Micro, Small, Medium, Large, "Extra-large"]
       description: "The specification of the NAT Gateway. 'Micro' supports up to 1,000 SNAT connections. 'Small' supports up to 10,000 SNAT connections. 'Medium' supports up to 50,000 SNAT connections. 'Large' supports up to 200,000 SNAT connections. 'Extra-large' supports up to 1,000,000 SNAT connections."
@@ -104,14 +104,14 @@ topology_template:
     OpenShiftInstall:
       type: otc.nodes.SoftwareComponent.OpenShiftInstall
       properties:
-        component_version: "4.18.54"
+        component_version: "4.18.55"
         base_domain: { get_input: base_domain }
         cluster_name: { get_input: cluster_name }
         cluster_network: "10.128.0.0/14"
         machine_network: "10.0.0.0/16"
         service_network: "172.30.0.0/16"
         network_type: OVNKubernetes
-        openshift_install_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.54/openshift-install-linux.tar.gz"
+        openshift_install_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.18.55/openshift-install-linux.tar.gz"
         cluster_os_image: "rhcos-418.94.202501221327-0-openstack.x86_64"
         pull_secret: { get_secret: [pull_secret] }
         os_password: { get_secret: [os_password] }
