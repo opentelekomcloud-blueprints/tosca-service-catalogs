@@ -24,6 +24,35 @@ Make `openshift_checks.sh` fail-closed and add bootstrap monitoring:
   prints it in its failure message.
 * Fix the worker-ready count to use the worker node label instead of a column position.
 
+Example status.detail
+
+```
+  $ cat status.detail
+  status: COMPLETED
+  time: 2026-09-15 09:37:43 UTC
+  bootstrap-complete exit code: 0
+  --- last 20 lines of .openshift_install.log ---
+  time="2026-09-15T09:05:05Z" level=debug msg="  Loading Base Domain..."
+  time="2026-09-15T09:05:05Z" level=debug msg="  Loading Platform..."
+  time="2026-09-15T09:05:05Z" level=debug msg="  Loading Pull Secret..."
+  time="2026-09-15T09:05:05Z" level=debug msg="  Loading Platform..."
+  time="2026-09-15T09:05:05Z" level=debug msg="Using Install Config loaded from state file"
+  time="2026-09-15T09:05:05Z" level=info msg="Waiting up to 45m0s (until 9:50AM UTC) for bootstrapping to complete..."
+  time="2026-09-15T09:16:30Z" level=debug msg="Bootstrap status: complete"
+  time="2026-09-15T09:16:30Z" level=info msg="Waiting for the bootstrap etcd member to be removed..."
+  time="2026-09-15T09:17:31Z" level=debug msg="Error getting etcd operator singleton, retrying: the server was unable to return a response in the time allotted, but may still be processing the request (get etcds.operator.openshift.io cluster)"
+  time="2026-09-15T09:18:41Z" level=debug msg="Error getting etcd operator singleton, retrying: Get \"https://api.openshift.tri-test2.com:6443/apis/operator.openshift.io/v1/etcds/cluster\": dial tcp 10.0.0.5:6443: connect: connection refused"
+  time="2026-09-15T09:18:45Z" level=info msg="Bootstrap etcd member has been removed"
+  time="2026-09-15T09:18:45Z" level=info msg="It is now safe to remove the bootstrap resources"
+  time="2026-09-15T09:18:45Z" level=debug msg="Time elapsed per stage:"
+  time="2026-09-15T09:18:45Z" level=debug msg="Bootstrap Complete: 15m28s"
+  time="2026-09-15T09:18:45Z" level=debug msg="               API: 1m49s"
+  time="2026-09-15T09:18:45Z" level=info msg="Time elapsed: 15m28s"
+  --- cluster operators not available ---
+  --- nodes not ready ---
+  --- pending CSRs --
+```
+
 ### 1.0.8
 
 Fix OpenShift pullSecret rendering for ansible-core >= 2.19
