@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: Nextcloud
-  template_version: 28
+  template_version: 35
   template_author: Dr. Tri Vo
   template_documentation: "https://docs.otc.t-systems.com/cloud-create/umn/service_catalogs/nextcloud.html"
   template_images:
@@ -12,18 +12,22 @@ metadata:
     - /images/image3.png
 
 description: >
-  This template deploys NextCloud app (version 28) on Open Telekom Cloud using Object Storage and Relational Database Service as the storage back-end and the MySQL Server, respectively.
+  Deploys Nextcloud 35, a file sharing and collaboration web app, on T-Cloud Public. Nextcloud runs on
+  an Apache web server with PHP-FPM on a compute with a public IP. Files are stored in Object Storage
+  (OBS). The database is a managed Relational Database Service (RDS) for MySQL, created by the
+  template and reached through a MySQL database connector. Use it as an example of a web application
+  with a managed MySQL database and object storage.
 
 imports:
-  - otc.servicecatalogs.php:1.1.2
+  - otc.servicecatalogs.php:1.1.3
   - otc-iaas:1.0.4
   - tosca-normative-types:1.0.0-ALIEN20
   - otc.servicecatalogs.apache:1.0.1
   - otc.servicecatalogs.mysql:1.1.2
   - otc.iaas.obs:1.0.0
   - alien-extended-storage-types:3.0.1
-  - otc.paas.rds:1.0.7
-  - otc.servicecatalogs.nextcloud:1.2.3
+  - otc.paas.rds:1.0.8
+  - otc.servicecatalogs.nextcloud:1.2.4
 
 topology_template:
   inputs:
@@ -72,7 +76,7 @@ topology_template:
             architecture: "x86_64"
             type: linux
             distribution: ubuntu
-            version: 22.04
+            version: 24.04
         scalable:
           properties:
             min_instances: 1
@@ -170,7 +174,7 @@ topology_template:
     Nextcloud:
       type: otc.nodes.WebApplication.Nextcloud
       properties:
-        download_url: "https://download.nextcloud.com/server/releases/latest-28.tar.bz2"
+        download_url: "https://download.nextcloud.com/server/releases/latest-35.tar.bz2"
         datadir: "/var/www/nextcloud/data"
         admin_user: admin
         mail_configs:
@@ -220,7 +224,8 @@ topology_template:
             pool_pm_max_requests: 500
             pool_name: www
             pool_pm_status_path: "/status"
-        component_version: 8.2
+        component_version: 8.5
+        min_version: "8.5.12"
         php_packages_extra: []
         memory_limit: 512M
         max_execution_time: 60
@@ -284,7 +289,7 @@ topology_template:
       type: otc.nodes.paas.rds.RDSMySQL
       properties:
         type: MySQL
-        component_version: 8.0
+        component_version: 8.4
         volume_type: { get_input: rds_mysql_volume_type }
         ha_mode: single
         root_password: "Test123456!"

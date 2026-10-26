@@ -1,5 +1,17 @@
 # Changelog
 
+## 26.10.2026
+
+* Upgrade the NextCloud template from Nextcloud 28 to Nextcloud 35:
+  1. Update the compute OS from Ubuntu 22.04 to Ubuntu 24.04.
+  2. Update PHP from 8.2 to 8.5, with a minimum of `8.5.12` (fixes the remote code execution vulnerabilities CVE-2026-109618 and CVE-2026-109619).
+  3. Update RDS MySQL from 8.0 to 8.4 (requires `otc.paas.rds:1.0.8`).
+* Add `otc.servicecatalogs.php:1.1.3`:
+  1. Update the ansible role [geerlingguy.php-versions](https://github.com/geerlingguy/ansible-role-php-versions) to tag `7.2.0`, which skips the `opcache` package for PHP 8.5 (OPcache is built into PHP since 8.5).
+  2. Change the default PHP version (`component_version`) from 8.2 to 8.5.
+  3. Add the property `min_version`. When set, the deployment fails if the installed PHP version is older than this value.
+* Add `otc.servicecatalogs.nextcloud:1.2.4`, which uses `otc.servicecatalogs.php:1.1.3`.
+
 ## 15.09.2026
 
 * Improve `openshift_checks.sh` for bootstrap monitoring

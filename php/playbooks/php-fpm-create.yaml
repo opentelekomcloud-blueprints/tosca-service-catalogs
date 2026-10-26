@@ -52,6 +52,18 @@
     - name: Install PHP
       import_role:
         name: geerlingguy.php
+    - name: Read installed PHP version
+      command: php -r 'echo PHP_VERSION;'
+      register: php_installed_version
+      changed_when: false
+      when: PHP_MIN_VERSION | default('') | length > 0
+    - name: Ensure installed PHP version is at least the required minimum
+      assert:
+        that:
+          - php_installed_version.stdout is version(PHP_MIN_VERSION, '>=')
+        fail_msg: "PHP {{ php_installed_version.stdout }} is installed, but {{ PHP_MIN_VERSION }} or newer is required"
+        success_msg: "PHP {{ php_installed_version.stdout }} meets the minimum {{ PHP_MIN_VERSION }}"
+      when: PHP_MIN_VERSION | default('') | length > 0
     # RedHat/CentOS 7 automatically installs and enables mod_proxy_fcgi by default.
     - name: Enable mod_proxy_fcgi for Debian
       block:
